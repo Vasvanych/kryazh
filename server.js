@@ -6,187 +6,269 @@ const db = require('./database');
 const multer = require('multer');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
+const session = require('express-session');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const onlineUsers = new Map();
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-// Папка для аватарок
 const avatarDir = path.join(__dirname, 'uploads', 'avatars');
 if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir);
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
-const upload = multer({ storage });
+app.use(helmet({ contentSecurityPolicy: false }));
 
-const avatarStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, avatarDir),
-    filename: (req, file, cb) => cb(null, 'avatar-' + Date.now() + path.extname(file.originalname))
-});
-const uploadAvatar = multer({ storage: avatarStorage });
+app.use(session({
+    secret: 'kryazh-super-secret-key-2024',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 }
+}));
 
-app.use(express.json());
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { error: 'Слишком много запросов' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Слишком много попыток входа' } });
+app.use('/api/', apiLimiter);
+
+function requireAuth(req, res, next) {
+    if (!req.session.userId) return res.status(401).json({ error: 'Не авторизован' });
+    next();
+}
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadDir),
+        filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        ALLOWED_IMAGE_TYPES.includes(file.mimetype) ? cb(null, true) : cb(new Error('Разрешены только изображения'));
+    }
+});
+
+const uploadAvatar = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, avatarDir),
+        filename: (req, file, cb) => cb(null, 'avatar-' + Date.now() + path.extname(file.originalname))
+    }),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        ALLOWED_IMAGE_TYPES.includes(file.mimetype) ? cb(null, true) : cb(new Error('Разрешены только изображения'));
+    }
+});
+
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadDir));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // Регистрация
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password)
-        return res.status(400).json({ error: 'Заполните все поля' });
+    if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
+    if (username.length < 3 || username.length > 30) return res.status(400).json({ error: 'Имя: от 3 до 30 символов' });
+    if (password.length < 6) return res.status(400).json({ error: 'Пароль: минимум 6 символов' });
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.status(400).json({ error: 'Имя: только латиница, цифры и _' });
+
     try {
         const hash = await bcrypt.hash(password, 10);
-        db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hash], function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE'))
-                    return res.status(400).json({ error: 'Пользователь уже существует' });
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ id: this.lastID, username });
-        });
+        const stmt = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
+        const result = stmt.run(username, hash);
+        req.session.userId = result.lastInsertRowid;
+        req.session.username = username;
+        res.json({ id: result.lastInsertRowid, username });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Пользователь уже существует' });
+        res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
 
 // Вход
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
     const { username, password } = req.body;
-    db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-        if (err || !user)
-            return res.status(401).json({ error: 'Неверное имя или пароль' });
+    if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
+
+    try {
+        const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+        if (!user) return res.status(401).json({ error: 'Неверное имя или пароль' });
+
         const match = await bcrypt.compare(password, user.password);
-        if (!match)
-            return res.status(401).json({ error: 'Неверное имя или пароль' });
+        if (!match) return res.status(401).json({ error: 'Неверное имя или пароль' });
+
+        req.session.userId = user.id;
+        req.session.username = user.username;
         res.json({ id: user.id, username: user.username, avatar: user.avatar });
-    });
+    } catch (err) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// Выход
+app.post('/api/logout', (req, res) => {
+    req.session.destroy();
+    res.json({ ok: true });
+});
+
+// Проверка сессии
+app.get('/api/me', (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Не авторизован' });
+    const user = db.prepare('SELECT id, username, avatar FROM users WHERE id = ?').get(req.session.userId);
+    if (!user) return res.status(401).json({ error: 'Не авторизован' });
+    res.json(user);
 });
 
 // Список чатов
-app.get('/api/chats/:userId', (req, res) => {
-    db.all(`
+app.get('/api/chats/:userId', requireAuth, (req, res) => {
+    if (parseInt(req.params.userId) !== req.session.userId)
+        return res.status(403).json({ error: 'Доступ запрещён' });
+
+    const rows = db.prepare(`
         SELECT c.*,
-               (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
-               (SELECT created_at FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_time
+            (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
+            (SELECT created_at FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_time,
+            (SELECT COUNT(*) FROM messages m
+             WHERE m.chat_id = c.id AND m.user_id != @userId
+             AND m.id NOT IN (SELECT message_id FROM message_reads WHERE user_id = @userId)) as unread_count
         FROM chats c
         JOIN chat_participants cp ON c.id = cp.chat_id
-        WHERE cp.user_id = ?
+        WHERE cp.user_id = @userId
         ORDER BY last_message_time DESC
-    `, [req.params.userId], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows || []);
-    });
+    `).all({ userId: req.session.userId });
+
+    res.json(rows || []);
 });
 
 // Сообщения чата
-app.get('/api/messages/:chatId', (req, res) => {
-    db.all(`
-        SELECT m.*, u.username, u.avatar
+app.get('/api/messages/:chatId', requireAuth, (req, res) => {
+    const chatId = req.params.chatId;
+    const userId = req.session.userId;
+
+    const access = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
+    if (!access) return res.status(403).json({ error: 'Доступ запрещён' });
+
+    const rows = db.prepare(`
+        SELECT m.*, u.username, u.avatar,
+            (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count,
+            (SELECT GROUP_CONCAT(emoji || ':' || user_id) FROM message_reactions WHERE message_id = m.id) as reactions_raw
         FROM messages m
         JOIN users u ON m.user_id = u.id
         WHERE m.chat_id = ?
         ORDER BY m.created_at ASC
-    `, [req.params.chatId], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows || []);
-    });
+    `).all(chatId);
+
+    const messages = rows.map(msg => ({
+        ...msg,
+        reactions: msg.reactions_raw
+            ? msg.reactions_raw.split(',').reduce((acc, r) => {
+                const [emoji, uid] = r.split(':');
+                if (!acc[emoji]) acc[emoji] = [];
+                acc[emoji].push(parseInt(uid));
+                return acc;
+            }, {})
+            : {}
+    }));
+
+    res.json(messages);
 });
 
 // Поиск пользователей
-app.get('/api/users/search', (req, res) => {
+app.get('/api/users/search', requireAuth, (req, res) => {
     const query = req.query.q;
-    if (!query) return res.json([]);
-    db.all('SELECT id, username, avatar FROM users WHERE username LIKE ? LIMIT 20',
-        [`%${query}%`], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows || []);
-        });
+    if (!query || query.length < 2) return res.json([]);
+    if (query.length > 50) return res.status(400).json({ error: 'Запрос слишком длинный' });
+
+    const rows = db.prepare('SELECT id, username, avatar FROM users WHERE username LIKE ? LIMIT 20').all(`%${query}%`);
+    res.json(rows || []);
 });
 
 // Создать личный чат
-app.post('/api/chat/private', (req, res) => {
-    const { user1, user2 } = req.body;
-    db.get(`
+app.post('/api/chat/private', requireAuth, (req, res) => {
+    const user1 = req.session.userId;
+    const user2 = parseInt(req.body.user2);
+
+    if (!user2 || user1 === user2) return res.status(400).json({ error: 'Некорректный пользователь' });
+
+    const existing = db.prepare(`
         SELECT c.id FROM chats c
         JOIN chat_participants cp1 ON c.id = cp1.chat_id
         JOIN chat_participants cp2 ON c.id = cp2.chat_id
         WHERE c.type = 'private' AND cp1.user_id = ? AND cp2.user_id = ?
-    `, [user1, user2], (err, chat) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (chat) return res.json({ chatId: chat.id });
-        db.run('INSERT INTO chats (type) VALUES ("private")', function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            const chatId = this.lastID;
-            db.run('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)',
-                [chatId, user1, chatId, user2], (err) => {
-                    if (err) return res.status(500).json({ error: err.message });
-                    res.json({ chatId });
-                });
-        });
-    });
+    `).get(user1, user2);
+
+    if (existing) return res.json({ chatId: existing.id });
+
+    const chatId = db.prepare('INSERT INTO chats (type) VALUES ("private")').run().lastInsertRowid;
+    db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)').run(chatId, user1, chatId, user2);
+    res.json({ chatId });
 });
 
 // Создать групповой чат
-app.post('/api/chat/group', (req, res) => {
-    const { name, creatorId, members } = req.body;
-    db.run('INSERT INTO chats (name, type) VALUES (?, "group")', [name], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        const chatId = this.lastID;
-        const allMembers = [creatorId, ...(members || [])];
-        const placeholders = allMembers.map(() => '(?, ?)').join(',');
-        const values = allMembers.flatMap(m => [chatId, m]);
-        db.run(`INSERT INTO chat_participants (chat_id, user_id) VALUES ${placeholders}`, values, (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ chatId, name });
-        });
-    });
+app.post('/api/chat/group', requireAuth, (req, res) => {
+    const { name, members } = req.body;
+    const creatorId = req.session.userId;
+
+    if (!name || name.trim().length < 1) return res.status(400).json({ error: 'Введите название группы' });
+    if (name.length > 50) return res.status(400).json({ error: 'Название слишком длинное' });
+
+    const chatId = db.prepare('INSERT INTO chats (name, type) VALUES (?, "group")').run(name.trim()).lastInsertRowid;
+    const allMembers = [creatorId, ...(members || []).filter(m => m !== creatorId)];
+    const insertMember = db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)');
+    allMembers.forEach(m => insertMember.run(chatId, m));
+
+    res.json({ chatId, name });
 });
 
 // Участники чата
-app.get('/api/chat/:chatId/participants', (req, res) => {
-    db.all(`
-        SELECT u.id, u.username, u.avatar
-        FROM users u
+app.get('/api/chat/:chatId/participants', requireAuth, (req, res) => {
+    const chatId = req.params.chatId;
+    const userId = req.session.userId;
+
+    const access = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
+    if (!access) return res.status(403).json({ error: 'Доступ запрещён' });
+
+    const rows = db.prepare(`
+        SELECT u.id, u.username, u.avatar FROM users u
         JOIN chat_participants cp ON u.id = cp.user_id
         WHERE cp.chat_id = ?
-    `, [req.params.chatId], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+    `).all(chatId);
+
+    res.json(rows);
 });
 
 // Загрузка изображения
-app.post('/api/upload', upload.single('image'), (req, res) => {
+app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Нет файла' });
     res.json({ imageUrl: `/uploads/${req.file.filename}` });
 });
 
 // Загрузка аватарки
-app.post('/api/upload/avatar', uploadAvatar.single('avatar'), (req, res) => {
+app.post('/api/upload/avatar', requireAuth, uploadAvatar.single('avatar'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Нет файла' });
-    const userId = req.body.userId;
     const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-    db.run('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, userId], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ avatarUrl });
-    });
+    db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatarUrl, req.session.userId);
+    res.json({ avatarUrl });
 });
 
 // Онлайн пользователи
-app.get('/api/online-users', (req, res) => {
+app.get('/api/online-users', requireAuth, (req, res) => {
     res.json([...onlineUsers.keys()]);
+});
+
+// Ошибки multer
+app.use((err, req, res, next) => {
+    if (err.message && err.message.includes('Разрешены только'))
+        return res.status(400).json({ error: err.message });
+    if (err.code === 'LIMIT_FILE_SIZE')
+        return res.status(400).json({ error: 'Файл слишком большой' });
+    next(err);
 });
 
 // WebSocket
@@ -199,11 +281,8 @@ io.on('connection', (socket) => {
         io.emit('user online', userId);
     });
 
-    socket.on('join chat', (chatId) => {
-        socket.join(`chat_${chatId}`);
-    });
+    socket.on('join chat', (chatId) => socket.join(`chat_${chatId}`));
 
-    // Статус "печатает"
     socket.on('typing', ({ chatId, username }) => {
         socket.to(`chat_${chatId}`).emit('typing', { username });
     });
@@ -212,23 +291,56 @@ io.on('connection', (socket) => {
     });
 
     socket.on('new message', (data) => {
-        const { chatId, text, userId, username, isImage, imageUrl } = data;
+        const { chatId, text, userId, username, isImage, imageUrl, forwardedFrom } = data;
+        if (!chatId || !userId) return;
         const content = isImage && imageUrl ? imageUrl : text;
+        if (!content) return;
 
-        db.run('INSERT INTO messages (chat_id, user_id, content, image_url) VALUES (?, ?, ?, ?)',
-            [chatId, userId, content, isImage ? imageUrl : null], function(err) {
-                if (err) return console.error('Ошибка сохранения:', err);
-                io.to(`chat_${chatId}`).emit('new message', {
-                    id: this.lastID,
-                    chat_id: chatId,
-                    user_id: userId,
-                    username,
-                    content,
-                    isImage: isImage || false,
-                    image_url: imageUrl,
-                    created_at: new Date().toISOString()
-                });
+        try {
+            const result = db.prepare(
+                'INSERT INTO messages (chat_id, user_id, content, image_url, forwarded_from) VALUES (?, ?, ?, ?, ?)'
+            ).run(chatId, userId, content, isImage ? imageUrl : null, forwardedFrom || null);
+
+            const msgId = result.lastInsertRowid;
+            db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(msgId, userId);
+
+            io.to(`chat_${chatId}`).emit('new message', {
+                id: msgId, chat_id: chatId, user_id: userId, username,
+                content, isImage: isImage || false, image_url: imageUrl,
+                forwarded_from: forwardedFrom || null,
+                read_count: 1, reactions: {},
+                created_at: new Date().toISOString()
             });
+        } catch (err) {
+            console.error('Ошибка сохранения:', err);
+        }
+    });
+
+    socket.on('read messages', ({ chatId, userId }) => {
+        try {
+            const msgs = db.prepare('SELECT id FROM messages WHERE chat_id = ? AND user_id != ?').all(chatId, userId);
+            if (!msgs.length) return;
+            const stmt = db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)');
+            msgs.forEach(msg => stmt.run(msg.id, userId));
+            io.to(`chat_${chatId}`).emit('messages read', { chatId, userId });
+        } catch (err) {
+            console.error('Ошибка read messages:', err);
+        }
+    });
+
+    socket.on('react', ({ messageId, userId, emoji, chatId }) => {
+        try {
+            const existing = db.prepare('SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ?').get(messageId, userId);
+            if (existing && existing.emoji === emoji) {
+                db.prepare('DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?').run(messageId, userId);
+                io.to(`chat_${chatId}`).emit('reaction updated', { messageId, userId, emoji, removed: true });
+            } else {
+                db.prepare('INSERT OR REPLACE INTO message_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)').run(messageId, userId, emoji);
+                io.to(`chat_${chatId}`).emit('reaction updated', { messageId, userId, emoji, removed: false });
+            }
+        } catch (err) {
+            console.error('Ошибка реакции:', err);
+        }
     });
 
     socket.on('disconnect', () => {
@@ -239,6 +351,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(port, () => {
-    console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`);
-});
+server.listen(port, () => console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`));
