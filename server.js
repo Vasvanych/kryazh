@@ -11,6 +11,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server);
 const port = process.env.PORT || 3000;
@@ -205,7 +206,7 @@ app.post('/api/chat/private', requireAuth, (req, res) => {
 
     if (existing) return res.json({ chatId: existing.id });
 
-    const chatId = db.prepare('INSERT INTO chats (type) VALUES ("private")').run().lastInsertRowid;
+   const chatId = db.prepare("INSERT INTO chats (type) VALUES ('private')").run().lastInsertRowid;
     db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)').run(chatId, user1, chatId, user2);
     res.json({ chatId });
 });
@@ -218,7 +219,7 @@ app.post('/api/chat/group', requireAuth, (req, res) => {
     if (!name || name.trim().length < 1) return res.status(400).json({ error: 'Введите название группы' });
     if (name.length > 50) return res.status(400).json({ error: 'Название слишком длинное' });
 
-    const chatId = db.prepare('INSERT INTO chats (name, type) VALUES (?, "group")').run(name.trim()).lastInsertRowid;
+    const chatId = db.prepare("INSERT INTO chats (name, type) VALUES (?, 'group')").run(name.trim()).lastInsertRowid;
     const allMembers = [creatorId, ...(members || []).filter(m => m !== creatorId)];
     const insertMember = db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)');
     allMembers.forEach(m => insertMember.run(chatId, m));
