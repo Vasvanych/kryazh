@@ -26,7 +26,6 @@
             --header-bg: #764ba2;
             --online: #4caf50;
         }
-
         [data-theme="dark"] {
             --bg: #0f0f0f;
             --surface: #1e1e1e;
@@ -59,32 +58,9 @@
             align-items: center;
             transition: background 0.3s;
         }
-
         [data-theme="light"] body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-
-        .auth-container {
-            background: var(--surface);
-            border-radius: 20px;
-            padding: 40px;
-            width: 350px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .auth-container h2 { text-align: center; color: var(--primary); margin-bottom: 30px; }
-        .auth-container input {
-            width: 100%; padding: 12px; margin-bottom: 15px;
-            border: 1px solid var(--border); border-radius: 25px; outline: none;
-            background: var(--input-bg); color: var(--text);
-        }
-        .auth-container input:focus { border-color: var(--primary); }
-        .auth-container button {
-            width: 100%; padding: 12px; background: var(--primary); color: white;
-            border: none; border-radius: 25px; font-size: 16px; cursor: pointer; margin-bottom: 10px;
-        }
-        .auth-container button:hover { background: var(--primary-dark); }
-        .auth-switch { text-align: center; color: var(--primary); cursor: pointer; margin-top: 10px; }
-        .error { color: #e53935; text-align: center; margin-bottom: 10px; font-size: 14px; }
 
         .main-container {
             display: none;
@@ -113,15 +89,9 @@
         }
         .user-info-bar:hover { background: var(--primary-dark); }
 
-        /* Кнопка темы */
         .theme-toggle {
-            margin-left: auto;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 4px;
-            pointer-events: all !important;
+            margin-left: auto; background: none; border: none;
+            cursor: pointer; font-size: 18px; padding: 4px; pointer-events: all !important;
         }
 
         .search-box { padding: 15px; border-bottom: 1px solid var(--border); }
@@ -177,20 +147,15 @@
         }
 
         .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-
         .chat-header {
             padding: 12px 20px; background: var(--surface);
             border-bottom: 1px solid var(--border);
             display: flex; align-items: center; gap: 12px; min-height: 62px;
         }
-
-        /* Кнопка назад — только на мобиле */
         .back-btn {
-            display: none;
-            background: none; border: none; cursor: pointer;
+            display: none; background: none; border: none; cursor: pointer;
             font-size: 22px; color: var(--primary); padding: 0 8px 0 0;
         }
-
         .chat-header-info { flex: 1; }
         .chat-header-name { font-weight: bold; font-size: 16px; color: var(--text); }
         .chat-header-status { font-size: 12px; color: var(--text-faint); }
@@ -215,7 +180,6 @@
         .message-ticks { font-size: 12px; }
         .message-ticks.read { color: #4fc3f7; }
         .message img { max-width: 200px; max-height: 200px; border-radius: 10px; cursor: pointer; display: block; }
-
         .forwarded-label { font-size: 11px; font-style: italic; opacity: 0.75; margin-bottom: 4px; }
 
         .reactions-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
@@ -304,61 +268,19 @@
         .empty-state { text-align: center; color: var(--text-faint); margin: auto; padding: 40px; }
         .empty-state div { font-size: 48px; margin-bottom: 10px; }
 
-        /* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
         @media (max-width: 640px) {
             body { align-items: flex-start; }
-
-            .main-container {
-                border-radius: 0;
-                max-height: 100vh;
-                height: 100dvh;
-                width: 100vw;
-                max-width: 100vw;
-            }
-
-            .sidebar {
-                width: 100%;
-                position: absolute;
-                top: 0; left: 0; right: 0; bottom: 0;
-                z-index: 10;
-                transition: transform 0.3s;
-            }
-
-            .sidebar.hidden {
-                transform: translateX(-100%);
-            }
-
-            .chat-area {
-                position: absolute;
-                top: 0; left: 0; right: 0; bottom: 0;
-                z-index: 5;
-                transform: translateX(100%);
-                transition: transform 0.3s;
-                background: var(--surface);
-            }
-
-            .chat-area.visible {
-                transform: translateX(0);
-            }
-
+            .main-container { border-radius: 0; max-height: 100vh; height: 100dvh; width: 100vw; max-width: 100vw; position: relative; overflow: hidden; }
+            .sidebar { width: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; transition: transform 0.3s; }
+            .sidebar.hidden { transform: translateX(-100%); }
+            .chat-area { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 5; transform: translateX(100%); transition: transform 0.3s; background: var(--surface); }
+            .chat-area.visible { transform: translateX(0); }
             .back-btn { display: block; }
-
             .message-wrap { max-width: 80%; }
-
-            .main-container { position: relative; overflow: hidden; }
         }
     </style>
 </head>
 <body>
-
-<div id="authContainer" class="auth-container">
-    <h2>💬 Kryazh Messenger</h2>
-    <div id="authError" class="error"></div>
-    <input type="text" id="authUsername" placeholder="Имя пользователя">
-    <input type="password" id="authPassword" placeholder="Пароль">
-    <button id="authBtn">Войти</button>
-    <div class="auth-switch" id="switchToRegister">📝 Нет аккаунта? Зарегистрироваться</div>
-</div>
 
 <div id="mainContainer" class="main-container flex">
     <div class="sidebar" id="sidebar">
@@ -435,7 +357,6 @@
     let currentChatType = null;
     let currentChatPartnerId = null;
     let socket = null;
-    let isRegisterMode = false;
     let allChats = [];
     const onlineUsers = new Set();
     let typingTimeout = null;
@@ -443,13 +364,7 @@
     let emojiTargetMsgId = null;
     let emojiTargetChatId = null;
 
-    const authContainer = document.getElementById('authContainer');
     const mainContainer = document.getElementById('mainContainer');
-    const authBtn = document.getElementById('authBtn');
-    const switchBtn = document.getElementById('switchToRegister');
-    const authError = document.getElementById('authError');
-    const authUsername = document.getElementById('authUsername');
-    const authPassword = document.getElementById('authPassword');
     const currentUsernameSpan = document.getElementById('currentUsername');
     const searchInput = document.getElementById('searchInput');
     const chatsList = document.getElementById('chatsList');
@@ -476,40 +391,24 @@
     const backBtn = document.getElementById('backBtn');
     const themeToggle = document.getElementById('themeToggle');
 
-    // ===== ТЁМНАЯ ТЕМА =====
+    // Тема
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-
     themeToggle.onclick = (e) => {
         e.stopPropagation();
-        const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
         localStorage.setItem('theme', next);
         themeToggle.textContent = next === 'dark' ? '☀️' : '🌙';
     };
 
-    // ===== МОБИЛЬНАЯ НАВИГАЦИЯ =====
-    function showChat() {
-        if (window.innerWidth <= 640) {
-            sidebar.classList.add('hidden');
-            chatArea.classList.add('visible');
-        }
-    }
-
-    function showSidebar() {
-        if (window.innerWidth <= 640) {
-            sidebar.classList.remove('hidden');
-            chatArea.classList.remove('visible');
-        }
-    }
-
+    // Мобильная навигация
+    function showChat() { if (window.innerWidth <= 640) { sidebar.classList.add('hidden'); chatArea.classList.add('visible'); } }
+    function showSidebar() { if (window.innerWidth <= 640) { sidebar.classList.remove('hidden'); chatArea.classList.remove('visible'); } }
     backBtn.onclick = showSidebar;
 
-    document.addEventListener('click', (e) => {
-        if (!emojiPicker.contains(e.target)) emojiPicker.classList.remove('visible');
-    });
+    document.addEventListener('click', (e) => { if (!emojiPicker.contains(e.target)) emojiPicker.classList.remove('visible'); });
 
     document.querySelectorAll('.emoji-opt').forEach(el => {
         el.onclick = (e) => {
@@ -520,86 +419,59 @@
         };
     });
 
-    forwardCancel.onclick = () => {
-        forwardingMessage = null;
-        forwardBanner.classList.remove('visible');
-    };
+    forwardCancel.onclick = () => { forwardingMessage = null; forwardBanner.classList.remove('visible'); };
 
-    switchBtn.onclick = () => {
-        isRegisterMode = !isRegisterMode;
-        authBtn.textContent = isRegisterMode ? 'Зарегистрироваться' : 'Войти';
-        switchBtn.textContent = isRegisterMode ? '✅ Уже есть аккаунт? Войти' : '📝 Нет аккаунта? Зарегистрироваться';
-        authError.textContent = '';
-    };
+    // Проверка сессии и инициализация
+    (async () => {
+        const res = await fetch('/api/me');
+        if (!res.ok) { window.location.href = '/login'; return; }
+        const user = await res.json();
 
-    authPassword.onkeypress = (e) => { if (e.key === 'Enter') authBtn.click(); };
+        currentUser = user;
+        currentUsernameSpan.textContent = user.username;
+        myAvatarEl.innerHTML = user.avatar
+            ? `<img src="${user.avatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">`
+            : user.username[0].toUpperCase();
 
-    authBtn.onclick = async () => {
-        const username = authUsername.value.trim();
-        const password = authPassword.value.trim();
-        if (!username || !password) { authError.textContent = 'Заполните все поля'; return; }
+        mainContainer.style.display = 'flex';
 
-        const url = isRegisterMode ? '/api/register' : '/api/login';
-        try {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            if (!res.ok) { authError.textContent = data.error; return; }
+        socket = io();
+        socket.emit('auth', currentUser.id);
 
-            currentUser = data;
-            currentUsernameSpan.textContent = data.username;
+        const onlineRes = await fetch('/api/online-users');
+        (await onlineRes.json()).forEach(id => onlineUsers.add(id));
 
-            if (data.avatar) {
-                myAvatarEl.innerHTML = `<img src="${data.avatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">`;
-            } else {
-                myAvatarEl.textContent = data.username[0].toUpperCase();
+        socket.on('user online', (userId) => { onlineUsers.add(userId); renderOnlineInHeader(); loadChats(); });
+        socket.on('user offline', (userId) => { onlineUsers.delete(userId); renderOnlineInHeader(); loadChats(); });
+
+        socket.on('typing', ({ username }) => {
+            typingIndicator.innerHTML = `<span>${escapeHtml(username)} печатает</span><span class="typing-dots"><span></span><span></span><span></span></span>`;
+        });
+        socket.on('stop typing', () => { typingIndicator.innerHTML = ''; });
+
+        socket.on('new message', (msg) => {
+            if (currentChat && msg.chat_id === currentChat.id) {
+                addMessageToChat(msg, msg.user_id === currentUser.id);
+                typingIndicator.innerHTML = '';
+                socket.emit('read messages', { chatId: currentChat.id, userId: currentUser.id });
             }
+            loadChats();
+        });
 
-            authContainer.style.display = 'none';
-            mainContainer.style.display = 'flex';
+        socket.on('messages read', ({ chatId, userId }) => {
+            if (userId !== currentUser.id) {
+                document.querySelectorAll(`.msg-ticks[data-chat="${chatId}"]`).forEach(el => {
+                    el.textContent = '✓✓'; el.classList.add('read');
+                });
+            }
+        });
 
-            socket = io();
-            socket.emit('auth', currentUser.id);
+        socket.on('reaction updated', ({ messageId, userId, emoji, removed }) => {
+            updateReactionInDOM(messageId, userId, emoji, removed);
+        });
 
-            const onlineRes = await fetch('/api/online-users');
-            (await onlineRes.json()).forEach(id => onlineUsers.add(id));
-
-            socket.on('user online', (userId) => { onlineUsers.add(userId); renderOnlineInHeader(); loadChats(); });
-            socket.on('user offline', (userId) => { onlineUsers.delete(userId); renderOnlineInHeader(); loadChats(); });
-
-            socket.on('typing', ({ username }) => {
-                typingIndicator.innerHTML = `<span>${escapeHtml(username)} печатает</span><span class="typing-dots"><span></span><span></span><span></span></span>`;
-            });
-            socket.on('stop typing', () => { typingIndicator.innerHTML = ''; });
-
-            socket.on('new message', (msg) => {
-                if (currentChat && msg.chat_id === currentChat.id) {
-                    addMessageToChat(msg, msg.user_id === currentUser.id);
-                    typingIndicator.innerHTML = '';
-                    socket.emit('read messages', { chatId: currentChat.id, userId: currentUser.id });
-                }
-                loadChats();
-            });
-
-            socket.on('messages read', ({ chatId, userId }) => {
-                if (userId !== currentUser.id) {
-                    document.querySelectorAll(`.msg-ticks[data-chat="${chatId}"]`).forEach(el => {
-                        el.textContent = '✓✓';
-                        el.classList.add('read');
-                    });
-                }
-            });
-
-            socket.on('reaction updated', ({ messageId, userId, emoji, removed }) => {
-                updateReactionInDOM(messageId, userId, emoji, removed);
-            });
-
-            await loadChats();
-        } catch (err) { authError.textContent = 'Ошибка соединения'; }
-    };
+        await loadChats();
+    })();
 
     document.getElementById('userInfoBar').onclick = (e) => {
         if (e.target === themeToggle) return;
@@ -633,12 +505,8 @@
         }
 
         const activeChatId = currentChat ? currentChat.id : null;
-
         const chatItems = await Promise.all(allChats.map(async (chat) => {
-            let displayName = chat.name;
-            let partnerId = null;
-            let partnerAvatar = null;
-
+            let displayName = chat.name, partnerId = null, partnerAvatar = null;
             if (chat.type === 'private') {
                 const pRes = await fetch(`/api/chat/${chat.id}/participants`);
                 if (pRes.ok) {
@@ -649,35 +517,23 @@
                     partnerAvatar = other ? other.avatar : null;
                 }
             }
-
             const isOnline = partnerId !== null && onlineUsers.has(partnerId);
-            const time = chat.last_message_time
-                ? new Date(chat.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : '';
-            const preview = chat.last_message
-                ? (chat.last_message.includes('/uploads/') ? '📷 Фото' : chat.last_message.slice(0, 30))
-                : 'Новый чат';
+            const time = chat.last_message_time ? new Date(chat.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const preview = chat.last_message ? (chat.last_message.includes('/uploads/') ? '📷 Фото' : chat.last_message.slice(0, 30)) : 'Новый чат';
             const unread = chat.unread_count || 0;
-
             return { chat, displayName, partnerId, partnerAvatar, isOnline, time, preview, unread };
         }));
 
         chatsList.innerHTML = chatItems.map(({ chat, displayName, partnerId, partnerAvatar, isOnline, time, preview, unread }) => {
-            let avEl = '';
-            if (chat.type === 'group') {
-                avEl = `<div class="avatar">👥</div>`;
-            } else if (partnerAvatar) {
-                avEl = `<div class="avatar"><img src="${partnerAvatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
-            } else {
-                avEl = `<div class="avatar">${(displayName || '?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
-            }
-
-            return `
-                <div class="chat-item ${activeChatId === chat.id ? 'active' : ''}"
+            let avEl = chat.type === 'group'
+                ? `<div class="avatar">👥</div>`
+                : partnerAvatar
+                    ? `<div class="avatar"><img src="${partnerAvatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">${isOnline ? '<div class="online-dot"></div>' : ''}</div>`
+                    : `<div class="avatar">${(displayName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
+            return `<div class="chat-item ${activeChatId === chat.id ? 'active' : ''}"
                      data-chat-id="${chat.id}" data-chat-type="${chat.type}"
                      data-chat-name="${escapeHtml(displayName)}"
-                     data-partner-id="${partnerId || ''}"
-                     data-partner-avatar="${partnerAvatar || ''}">
+                     data-partner-id="${partnerId||''}" data-partner-avatar="${partnerAvatar||''}">
                     ${avEl}
                     <div class="chat-item-info">
                         <div class="chat-item-top">
@@ -739,8 +595,7 @@
             ? `<div class="avatar">👥</div>`
             : partnerAvatar
                 ? `<div class="avatar"><img src="${partnerAvatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">${isOnline ? '<div class="online-dot"></div>' : ''}</div>`
-                : `<div class="avatar">${(chatName || '?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
-
+                : `<div class="avatar">${(chatName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
         chatHeader.innerHTML = `
             <button class="back-btn" id="backBtn">←</button>
             ${avEl}
@@ -748,7 +603,6 @@
                 <div class="chat-header-name">${escapeHtml(chatName || 'Чат')}</div>
                 <div class="chat-header-status ${statusClass}">${statusText}</div>
             </div>`;
-
         document.getElementById('backBtn').onclick = showSidebar;
     }
 
@@ -762,13 +616,10 @@
     function addMessageToChat(msg, isSent) {
         const empty = messagesDiv.querySelector('.empty-state');
         if (empty) empty.remove();
-
         const row = document.createElement('div');
         row.className = `message-row ${isSent ? 'sent' : 'received'}`;
         row.dataset.msgId = msg.id;
-
         const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
         let content = '';
         if (msg.content && (msg.content.includes('/uploads/') || msg.image_url)) {
             const url = msg.image_url || msg.content;
@@ -776,40 +627,28 @@
         } else {
             content = escapeHtml(msg.content || '');
         }
-
-        const forwardedLabel = msg.forwarded_from
-            ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(msg.forwarded_from)}</div>` : '';
-        const sender = (!isSent && currentChatType === 'group')
-            ? `<div class="message-sender">${escapeHtml(msg.username)}</div>` : '';
+        const forwardedLabel = msg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(msg.forwarded_from)}</div>` : '';
+        const sender = (!isSent && currentChatType === 'group') ? `<div class="message-sender">${escapeHtml(msg.username)}</div>` : '';
         const isRead = msg.read_count && msg.read_count > 1;
-        const ticks = isSent
-            ? `<span class="message-ticks msg-ticks ${isRead ? 'read' : ''}" data-chat="${msg.chat_id}">✓✓</span>` : '';
+        const ticks = isSent ? `<span class="message-ticks msg-ticks ${isRead ? 'read' : ''}" data-chat="${msg.chat_id}">✓✓</span>` : '';
         const reactionsHtml = buildReactionsHtml(msg.id, msg.reactions || {});
-
-        let avEl = '';
-        if (!isSent) {
-            avEl = msg.avatar
-                ? `<div class="avatar-sm"><img src="${msg.avatar}" width="28" height="28" style="border-radius:50%;object-fit:cover;"></div>`
-                : `<div class="avatar-sm">${(msg.username || '?')[0].toUpperCase()}</div>`;
-        }
-
-        row.innerHTML = `
-            ${avEl}
+        let avEl = !isSent
+            ? (msg.avatar ? `<div class="avatar-sm"><img src="${msg.avatar}" width="28" height="28" style="border-radius:50%;object-fit:cover;"></div>` : `<div class="avatar-sm">${(msg.username||'?')[0].toUpperCase()}</div>`)
+            : '';
+        row.innerHTML = `${avEl}
             <div class="message-wrap">
                 <div class="message-actions">
-                    <button class="action-btn" title="Реакция" onclick="openEmojiPicker(event, ${msg.id}, ${msg.chat_id})">😊</button>
-                    <button class="action-btn" title="Переслать" onclick="forwardMessage(${msg.id}, '${escapeHtml(msg.username)}', '${escapeHtml(msg.content || '')}')">↪</button>
+                    <button class="action-btn" onclick="openEmojiPicker(event,${msg.id},${msg.chat_id})">😊</button>
+                    <button class="action-btn" onclick="forwardMessage(${msg.id},'${escapeHtml(msg.username)}','${escapeHtml(msg.content||'')}')">↪</button>
                 </div>
                 <div class="message ${isSent ? 'sent' : 'received'}">
                     ${forwardedLabel}${sender}${content}
                     <div class="message-footer">
-                        <span class="message-time">${time}</span>
-                        ${ticks}
+                        <span class="message-time">${time}</span>${ticks}
                     </div>
                 </div>
                 <div class="reactions-bar" id="reactions-${msg.id}">${reactionsHtml}</div>
             </div>`;
-
         messagesDiv.appendChild(row);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
@@ -817,7 +656,7 @@
     function buildReactionsHtml(msgId, reactions) {
         return Object.entries(reactions).map(([emoji, users]) => {
             const mine = users.includes(currentUser.id);
-            return `<button class="reaction-btn ${mine ? 'mine' : ''}" onclick="toggleReaction(${msgId}, '${emoji}')">${emoji} <span class="reaction-count">${users.length}</span></button>`;
+            return `<button class="reaction-btn ${mine?'mine':''}" onclick="toggleReaction(${msgId},'${emoji}')">${emoji} <span class="reaction-count">${users.length}</span></button>`;
         }).join('');
     }
 
@@ -828,30 +667,24 @@
         if (!bar) return;
         const existing = {};
         bar.querySelectorAll('.reaction-btn').forEach(btn => {
-            const e = btn.textContent.trim().replace(/\d+/g, '').trim();
+            const e = btn.textContent.trim().replace(/\d+/g,'').trim();
             const count = parseInt(btn.querySelector('.reaction-count').textContent);
             existing[e] = { count, mine: btn.classList.contains('mine') };
         });
         if (removed) {
-            if (existing[emoji]) {
-                existing[emoji].count--;
-                if (userId === currentUser.id) existing[emoji].mine = false;
-                if (existing[emoji].count <= 0) delete existing[emoji];
-            }
+            if (existing[emoji]) { existing[emoji].count--; if (userId===currentUser.id) existing[emoji].mine=false; if (existing[emoji].count<=0) delete existing[emoji]; }
         } else {
-            if (!existing[emoji]) existing[emoji] = { count: 0, mine: false };
-            existing[emoji].count++;
-            if (userId === currentUser.id) existing[emoji].mine = true;
+            if (!existing[emoji]) existing[emoji]={count:0,mine:false};
+            existing[emoji].count++; if (userId===currentUser.id) existing[emoji].mine=true;
         }
-        bar.innerHTML = Object.entries(existing).map(([e, { count, mine }]) =>
-            `<button class="reaction-btn ${mine ? 'mine' : ''}" onclick="toggleReaction(${messageId}, '${e}')">${e} <span class="reaction-count">${count}</span></button>`
+        bar.innerHTML = Object.entries(existing).map(([e,{count,mine}]) =>
+            `<button class="reaction-btn ${mine?'mine':''}" onclick="toggleReaction(${messageId},'${e}')">${e} <span class="reaction-count">${count}</span></button>`
         ).join('');
     }
 
     function openEmojiPicker(e, msgId, chatId) {
         e.stopPropagation();
-        emojiTargetMsgId = msgId;
-        emojiTargetChatId = chatId;
+        emojiTargetMsgId = msgId; emojiTargetChatId = chatId;
         const rect = e.target.getBoundingClientRect();
         emojiPicker.style.top = (rect.top - 60) + 'px';
         emojiPicker.style.left = rect.left + 'px';
@@ -880,18 +713,13 @@
         const text = messageInput.value.trim();
         if (!text || !currentChat) return;
         const msgData = { chatId: currentChat.id, text, userId: currentUser.id, username: currentUser.username };
-        if (forwardingMessage) {
-            msgData.forwardedFrom = forwardingMessage.username;
-            forwardingMessage = null;
-            forwardBanner.classList.remove('visible');
-        }
+        if (forwardingMessage) { msgData.forwardedFrom = forwardingMessage.username; forwardingMessage = null; forwardBanner.classList.remove('visible'); }
         socket.emit('new message', msgData);
         socket.emit('stop typing', { chatId: currentChat.id });
         messageInput.value = '';
     };
 
     messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendButton.click(); };
-
     messageInput.oninput = () => {
         if (!currentChat) return;
         socket.emit('typing', { chatId: currentChat.id, username: currentUser.username });
@@ -900,7 +728,6 @@
     };
 
     imageBtn.onclick = () => imageInput.click();
-
     imageInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file || !currentChat) return;
@@ -908,11 +735,7 @@
         formData.append('image', file);
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
         const data = await res.json();
-        socket.emit('new message', {
-            chatId: currentChat.id, text: data.imageUrl,
-            userId: currentUser.id, username: currentUser.username,
-            isImage: true, imageUrl: data.imageUrl
-        });
+        socket.emit('new message', { chatId: currentChat.id, text: data.imageUrl, userId: currentUser.id, username: currentUser.username, isImage: true, imageUrl: data.imageUrl });
         imageInput.value = '';
     };
 
@@ -921,17 +744,14 @@
         clearTimeout(searchTimeout);
         const query = searchInput.value.trim();
         if (query.length < 2) { loadChats(); return; }
-
         searchTimeout = setTimeout(async () => {
             const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
             if (!res.ok) return;
             const users = await res.json();
             const filtered = users.filter(u => u.id !== currentUser.id);
-
             if (!filtered.length) { chatsList.innerHTML = '<div class="empty-state"><div>👻</div>Пользователи не найдены</div>'; return; }
-
             chatsList.innerHTML = filtered.map(user => `
-                <div class="chat-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-avatar="${user.avatar || ''}">
+                <div class="chat-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-avatar="${user.avatar||''}">
                     <div class="avatar" style="position:relative;">
                         ${user.avatar ? `<img src="${user.avatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">` : user.username[0].toUpperCase()}
                         ${onlineUsers.has(user.id) ? '<div class="online-dot"></div>' : ''}
@@ -941,16 +761,12 @@
                         <div class="chat-preview">${onlineUsers.has(user.id) ? '🟢 онлайн' : 'Нажмите чтобы написать'}</div>
                     </div>
                 </div>`).join('');
-
             document.querySelectorAll('[data-user-id]').forEach(el => {
                 el.onclick = async () => {
                     const userId = parseInt(el.dataset.userId);
                     const username = el.dataset.username;
                     const avatar = el.dataset.avatar || null;
-                    const res = await fetch('/api/chat/private', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user1: currentUser.id, user2: userId })
-                    });
+                    const res = await fetch('/api/chat/private', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user1: currentUser.id, user2: userId }) });
                     if (!res.ok) return;
                     const data = await res.json();
                     searchInput.value = '';
@@ -965,12 +781,7 @@
     };
 
     createGroupBtn.onclick = () => { groupModal.style.display = 'flex'; };
-    closeModalBtn.onclick = () => {
-        groupModal.style.display = 'none';
-        document.getElementById('groupName').value = '';
-        document.getElementById('groupMembers').value = '';
-    };
-
+    closeModalBtn.onclick = () => { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; };
     confirmGroupBtn.onclick = async () => {
         const name = document.getElementById('groupName').value.trim();
         const membersStr = document.getElementById('groupMembers').value.trim();
@@ -983,16 +794,9 @@
             const user = users.find(u => u.username === mname);
             if (user) memberIds.push(user.id);
         }
-        const res = await fetch('/api/chat/group', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, creatorId: currentUser.id, members: memberIds })
-        });
-        if (res.ok) {
-            groupModal.style.display = 'none';
-            document.getElementById('groupName').value = '';
-            document.getElementById('groupMembers').value = '';
-            await loadChats();
-        } else { alert('Ошибка создания группы'); }
+        const res = await fetch('/api/chat/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, creatorId: currentUser.id, members: memberIds }) });
+        if (res.ok) { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; await loadChats(); }
+        else { alert('Ошибка создания группы'); }
     };
 </script>
 </body>

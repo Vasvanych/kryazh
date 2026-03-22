@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация — Kryazh</title>
+    <style>
+        :root {
+            --primary: #764ba2;
+            --primary-dark: #6a3d96;
+            --border: #e0e0e0;
+            --text: #1a1a1a;
+            --text-muted: #999;
+            --surface: #ffffff;
+            --input-bg: #ffffff;
+            --error: #e53935;
+            --success: #43a047;
+        }
+        [data-theme="dark"] {
+            --primary: #9b6fc4;
+            --primary-dark: #8a5eb3;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-muted: #666;
+            --surface: #1e1e1e;
+            --input-bg: #2a2a2a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        [data-theme="dark"] body { background: #0f0f0f; }
+
+        .card {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+        .logo-icon { font-size: 48px; display: block; margin-bottom: 8px; }
+        .logo h1 { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+        .logo p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        input {
+            width: 100%; padding: 13px 16px;
+            border: 1.5px solid var(--border); border-radius: 12px;
+            outline: none; background: var(--input-bg); color: var(--text);
+            font-size: 15px; transition: border 0.2s;
+        }
+        input:focus { border-color: var(--primary); }
+
+        .hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+        .btn {
+            width: 100%; padding: 14px; background: var(--primary); color: white;
+            border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+            cursor: pointer; margin-top: 8px; transition: background 0.2s, transform 0.1s;
+        }
+        .btn:hover { background: var(--primary-dark); }
+        .btn:active { transform: scale(0.98); }
+
+        .error { color: var(--error); font-size: 13px; text-align: center; margin-bottom: 12px; min-height: 20px; }
+
+        .switch-link { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-muted); }
+        .switch-link a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .switch-link a:hover { text-decoration: underline; }
+
+        .theme-btn {
+            position: fixed; top: 16px; right: 16px;
+            background: rgba(255,255,255,0.2); border: none; border-radius: 50%;
+            width: 40px; height: 40px; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-btn" id="themeBtn">🌙</button>
+
+    <div class="card">
+        <div class="logo">
+            <span class="logo-icon">✨</span>
+            <h1>Kryazh</h1>
+            <p>Создайте новый аккаунт</p>
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="form-group">
+            <label>Имя пользователя</label>
+            <input type="text" id="username" placeholder="от 3 до 30 символов" autocomplete="username">
+            <div class="hint">Только латиница, цифры и _</div>
+        </div>
+        <div class="form-group">
+            <label>Пароль</label>
+            <input type="password" id="password" placeholder="минимум 6 символов" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label>Повторите пароль</label>
+            <input type="password" id="password2" placeholder="повторите пароль" autocomplete="new-password">
+        </div>
+
+        <button class="btn" id="registerBtn">Создать аккаунт</button>
+
+        <div class="switch-link">
+            Уже есть аккаунт? <a href="/login">Войти</a>
+        </div>
+    </div>
+
+    <script>
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        const themeBtn = document.getElementById('themeBtn');
+        themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+        themeBtn.onclick = () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+        };
+
+        fetch('/api/me', { credentials: 'include' }).then(r => {
+            if (r.ok) window.location.href = '/';
+        });
+
+        const errorMsg = document.getElementById('errorMsg');
+        const registerBtn = document.getElementById('registerBtn');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const password2Input = document.getElementById('password2');
+
+        async function register() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            const password2 = password2Input.value.trim();
+
+            if (!username || !password || !password2) { errorMsg.textContent = 'Заполните все поля'; return; }
+            if (password !== password2) { errorMsg.textContent = 'Пароли не совпадают'; return; }
+            if (password.length < 6) { errorMsg.textContent = 'Пароль: минимум 6 символов'; return; }
+
+            registerBtn.textContent = 'Создаём...';
+            registerBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorMsg.textContent = data.error;
+                    registerBtn.textContent = 'Создать аккаунт';
+                    registerBtn.disabled = false;
+                    return;
+                }
+                window.location.href = '/';
+            } catch {
+                errorMsg.textContent = 'Ошибка соединения';
+                registerBtn.textContent = 'Создать аккаунт';
+                registerBtn.disabled = false;
+            }
+        }
+
+        registerBtn.onclick = register;
+        password2Input.onkeypress = (e) => { if (e.key === 'Enter') register(); };
+        usernameInput.onkeypress = (e) => { if (e.key === 'Enter') passwordInput.focus(); };
+        passwordInput.onkeypress = (e) => { if (e.key === 'Enter') password2Input.focus(); };
+    </script>
+</body>
+</html>
