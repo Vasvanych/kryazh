@@ -159,25 +159,33 @@ app.get('/api/messages/:chatId', requireAuth, (req, res) => {
 
     const rows = db.prepare(`
         SELECT m.*, u.username, u.avatar,
-            (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count,
-            (SELECT GROUP_CONCAT(emoji || ':' || user_id) FROM message_reactions WHERE message_id = m.id) as reactions_raw
+            (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
         FROM messages m
         JOIN users u ON m.user_id = u.id
         WHERE m.chat_id = ?
         ORDER BY m.created_at ASC
     `).all(chatId);
 
-    const messages = rows.map(msg => ({
-        ...msg,
-        reactions: msg.reactions_raw
-            ? msg.reactions_raw.split(',').reduce((acc, r) => {
-                const [emoji, uid] = r.split(':');
-                if (!acc[emoji]) acc[emoji] = [];
-                acc[emoji].push(parseInt(uid));
-                return acc;
-            }, {})
-            : {}
-    }));
+    // Добавляем реакции к каждому сообщению
+    const messages = rows.map(msg => {
+        // Получаем все реакции для этого сообщения
+        const reactionsList = db.prepare(`
+            SELECT user_id, emoji FROM message_reactions WHERE message_id = ?
+        `).all(msg.id);
+        
+        // Группируем реакции по эмодзи
+        const reactions = {};
+        reactionsList.forEach(r => {
+            if (!reactions[r.emoji]) reactions[r.emoji] = [];
+            reactions[r.emoji].push(r.user_id);
+        });
+        
+        return {
+            ...msg,
+            reactions: reactions,
+            read_count: msg.read_count || 1
+        };
+    });
 
     res.json(messages);
 });
@@ -188,7 +196,16 @@ app.get('/api/users/search', requireAuth, (req, res) => {
     if (!query || query.length < 2) return res.json([]);
     if (query.length > 50) return res.status(400).json({ error: 'Запрос слишком длинный' });
 
-    const rows = db.prepare('SELECT id, username, avatar FROM users WHERE username LIKE ? LIMIT 20').all(`%${query}%`);
+    // Ищем по username (имени пользователя) — частичное совпадение
+    // Также можно добавить поиск по email или телефону, если они будут
+    const rows = db.prepare(`
+        SELECT id, username, avatar 
+        FROM users 
+        WHERE username LIKE ? 
+           OR username LIKE ?
+        LIMIT 20
+    `).all(`%${query}%`, `${query}%`);
+    
     res.json(rows || []);
 });
 
@@ -221,12 +238,32 @@ app.post('/api/chat/group', requireAuth, (req, res) => {
     if (!name || name.trim().length < 1) return res.status(400).json({ error: 'Введите название группы' });
     if (name.length > 50) return res.status(400).json({ error: 'Название слишком длинное' });
 
-    const chatId = db.prepare("INSERT INTO chats (name, type) VALUES (?, 'group')").run(name.trim()).lastInsertRowid;
-    const allMembers = [creatorId, ...(members || []).filter(m => m !== creatorId)];
-    const insertMember = db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)');
-    allMembers.forEach(m => insertMember.run(chatId, m));
+    // Проверяем, не существует ли уже группа с таким названием у этого пользователя
+    const existingGroup = db.prepare(`
+        SELECT c.id FROM chats c
+        JOIN chat_participants cp ON c.id = cp.chat_id
+        WHERE c.type = 'group' AND c.name = ? AND cp.user_id = ?
+    `).get(name.trim(), creatorId);
 
-    res.json({ chatId, name });
+    if (existingGroup) {
+        return res.status(400).json({ error: 'У вас уже есть группа с таким названием' });
+    }
+
+    try {
+        // Создаём группу
+        const chatResult = db.prepare("INSERT INTO chats (name, type) VALUES (?, 'group')").run(name.trim());
+        const chatId = chatResult.lastInsertRowid;
+        
+        // Добавляем участников
+        const allMembers = [creatorId, ...(members || []).filter(m => m !== creatorId && !isNaN(m))];
+        const insertMember = db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)');
+        allMembers.forEach(m => insertMember.run(chatId, m));
+        
+        res.json({ chatId, name });
+    } catch (err) {
+        console.error('Ошибка создания группы:', err);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
 });
 
 // Участники чата
@@ -293,31 +330,67 @@ io.on('connection', (socket) => {
         socket.to(`chat_${chatId}`).emit('stop typing');
     });
 
-    socket.on('new message', (data) => {
-        const { chatId, text, userId, username, isImage, imageUrl, forwardedFrom } = data;
-        if (!chatId || !userId) return;
-        const content = isImage && imageUrl ? imageUrl : text;
-        if (!content) return;
+   socket.on('new message', (data) => {
+    const { chatId, text, userId, username, isImage, imageUrl, forwardedFrom, replyTo } = data;
+    if (!chatId || !userId) return;
+    const content = isImage && imageUrl ? imageUrl : text;
+    if (!content) return;
 
-        try {
-            const result = db.prepare(
-                'INSERT INTO messages (chat_id, user_id, content, image_url, forwarded_from) VALUES (?, ?, ?, ?, ?)'
-            ).run(chatId, userId, content, isImage ? imageUrl : null, forwardedFrom || null);
-
-            const msgId = result.lastInsertRowid;
-            db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(msgId, userId);
-
-            io.to(`chat_${chatId}`).emit('new message', {
-                id: msgId, chat_id: chatId, user_id: userId, username,
-                content, isImage: isImage || false, image_url: imageUrl,
-                forwarded_from: forwardedFrom || null,
-                read_count: 1, reactions: {},
-                created_at: new Date().toISOString()
-            });
-        } catch (err) {
-            console.error('Ошибка сохранения:', err);
+    try {
+        // Сохраняем сообщение
+        const stmt = db.prepare(`
+            INSERT INTO messages (chat_id, user_id, content, image_url, forwarded_from, reply_to) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        
+        const result = stmt.run(
+            chatId, 
+            userId, 
+            content, 
+            isImage ? imageUrl : null, 
+            forwardedFrom || null,  // ← здесь имя отправителя для пересылки
+            replyTo ? replyTo.msgId : null
+        );
+        const msgId = result.lastInsertRowid;
+        
+        // Отмечаем, что отправитель прочитал своё сообщение
+        db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(msgId, userId);
+        
+        // Получаем сообщение с данными
+        let newMsg = db.prepare(`
+            SELECT m.*, u.username, u.avatar,
+                (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
+            FROM messages m
+            JOIN users u ON m.user_id = u.id
+            WHERE m.id = ?
+        `).get(msgId);
+        
+        // Добавляем данные об ответе (если есть)
+        if (newMsg.reply_to) {
+            const replyMsg = db.prepare(`
+                SELECT m.content, u.username 
+                FROM messages m
+                JOIN users u ON m.user_id = u.id
+                WHERE m.id = ?
+            `).get(newMsg.reply_to);
+            if (replyMsg) {
+                newMsg.reply_to_data = {
+                    content: replyMsg.content,
+                    username: replyMsg.username
+                };
+            }
         }
-    });
+        
+        // Убедимся, что forwarded_from сохранился
+        if (newMsg.forwarded_from) {
+            console.log('📨 Сообщение переслано от:', newMsg.forwarded_from);
+        }
+        
+        io.to(`chat_${chatId}`).emit('new message', newMsg);
+    } catch (err) {
+        console.error('Ошибка сохранения сообщения:', err);
+    }
+});
 
     socket.on('read messages', ({ chatId, userId }) => {
         try {
@@ -345,7 +418,69 @@ io.on('connection', (socket) => {
             console.error('Ошибка реакции:', err);
         }
     });
-
+    // Обработка реакций
+    socket.on('react', ({ messageId, userId, emoji, chatId }) => {
+        try {
+            // Проверяем, есть ли уже такая реакция от этого пользователя
+            const existing = db.prepare(`
+                SELECT * FROM message_reactions 
+                WHERE message_id = ? AND user_id = ?
+            `).get(messageId, userId);
+            
+            if (existing && existing.emoji === emoji) {
+                // Удаляем реакцию (если нажали на тот же смайлик)
+                db.prepare(`
+                    DELETE FROM message_reactions 
+                    WHERE message_id = ? AND user_id = ?
+                `).run(messageId, userId);
+                
+                socket.to(`chat_${chatId}`).emit('reaction updated', {
+                    messageId,
+                    userId,
+                    emoji,
+                    removed: true
+                });
+            } else if (existing) {
+                // Заменяем реакцию на другой смайлик
+                db.prepare(`
+                    UPDATE message_reactions 
+                    SET emoji = ? 
+                    WHERE message_id = ? AND user_id = ?
+                `).run(emoji, messageId, userId);
+                
+                socket.to(`chat_${chatId}`).emit('reaction updated', {
+                    messageId,
+                    userId,
+                    emoji,
+                    removed: false
+                });
+            } else {
+                // Добавляем новую реакцию
+                db.prepare(`
+                    INSERT INTO message_reactions (message_id, user_id, emoji) 
+                    VALUES (?, ?, ?)
+                `).run(messageId, userId, emoji);
+                
+                socket.to(`chat_${chatId}`).emit('reaction updated', {
+                    messageId,
+                    userId,
+                    emoji,
+                    removed: false
+                });
+            }
+            
+            // Отправляем обновление самому отправителю
+            socket.emit('reaction updated', {
+                messageId,
+                userId,
+                emoji,
+                removed: existing && existing.emoji === emoji
+            });
+            
+        } catch (err) {
+            console.error('Ошибка при обработке реакции:', err);
+        }
+    });
     socket.on('disconnect', () => {
         if (currentUser) {
             onlineUsers.delete(currentUser);

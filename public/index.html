@@ -181,6 +181,15 @@
         .message-ticks.read { color: #4fc3f7; }
         .message img { max-width: 200px; max-height: 200px; border-radius: 10px; cursor: pointer; display: block; }
         .forwarded-label { font-size: 11px; font-style: italic; opacity: 0.75; margin-bottom: 4px; }
+        .reply-quote {
+            background: rgba(0,0,0,0.1);
+            border-left: 3px solid var(--primary);
+            padding: 6px 10px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        .reply-quote strong { font-size: 11px; display: block; margin-bottom: 2px; }
 
         .reactions-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
         .reaction-btn {
@@ -195,7 +204,7 @@
         .emoji-picker {
             display: none; position: fixed; background: var(--surface);
             border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            padding: 8px; z-index: 100; gap: 4px; flex-wrap: wrap; width: 160px;
+            padding: 8px; z-index: 100; gap: 4px; flex-wrap: wrap; width: 220px;
             border: 1px solid var(--border);
         }
         .emoji-picker.visible { display: flex; }
@@ -240,11 +249,11 @@
         }
         .input-area button:hover { background: var(--primary-dark); }
 
-        .forward-banner {
+        .forward-banner, .reply-banner {
             background: var(--primary-light); padding: 8px 20px; font-size: 13px;
             color: var(--primary); display: none; align-items: center; justify-content: space-between;
         }
-        .forward-banner.visible { display: flex; }
+        .forward-banner.visible, .reply-banner.visible { display: flex; }
         .forward-cancel { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--primary); }
 
         .flex { display: flex; }
@@ -293,7 +302,7 @@
             <button class="theme-toggle" id="themeToggle" title="Сменить тему">🌙</button>
         </button>
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 Поиск пользователей...">
+            <input type="text" id="searchInput" placeholder="🔍 Введите имя (2+ буквы) — найдутся похожие">
             <button class="create-group-btn" id="createGroupBtn">👥 + Создать группу</button>
         </div>
         <div class="chats-list" id="chatsList">
@@ -311,8 +320,12 @@
         </div>
         <div class="typing-indicator" id="typingIndicator"></div>
         <div class="forward-banner" id="forwardBanner">
-            <span id="forwardLabel">Пересылка сообщения...</span>
+            <span id="forwardLabel">↪ Пересылка сообщения...</span>
             <button class="forward-cancel" id="forwardCancel">✕</button>
+        </div>
+        <div class="reply-banner" id="replyBanner">
+            <span id="replyLabel">💬 Ответ на сообщение...</span>
+            <button class="forward-cancel" id="replyCancel">✕</button>
         </div>
         <div class="input-area" id="inputArea" style="display:none;">
             <input type="text" id="messageInput" placeholder="✏️ Напишите сообщение...">
@@ -339,6 +352,10 @@
     <span class="emoji-opt">😮</span>
     <span class="emoji-opt">😢</span>
     <span class="emoji-opt">🔥</span>
+    <span class="emoji-opt">💩</span>
+    <span class="emoji-opt">🎉</span>
+    <span class="emoji-opt">👀</span>
+    <span class="emoji-opt">😎</span>
 </div>
 
 <input type="file" id="imageInput" accept="image/*" style="display:none;">
@@ -361,6 +378,7 @@
     const onlineUsers = new Set();
     let typingTimeout = null;
     let forwardingMessage = null;
+    let replyingTo = null;
     let emojiTargetMsgId = null;
     let emojiTargetChatId = null;
 
@@ -386,12 +404,14 @@
     const forwardBanner = document.getElementById('forwardBanner');
     const forwardLabel = document.getElementById('forwardLabel');
     const forwardCancel = document.getElementById('forwardCancel');
+    const replyBanner = document.getElementById('replyBanner');
+    const replyLabel = document.getElementById('replyLabel');
+    const replyCancel = document.getElementById('replyCancel');
     const sidebar = document.getElementById('sidebar');
     const chatArea = document.getElementById('chatArea');
     const backBtn = document.getElementById('backBtn');
     const themeToggle = document.getElementById('themeToggle');
 
-    // Тема
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
@@ -403,7 +423,6 @@
         themeToggle.textContent = next === 'dark' ? '☀️' : '🌙';
     };
 
-    // Мобильная навигация
     function showChat() { if (window.innerWidth <= 640) { sidebar.classList.add('hidden'); chatArea.classList.add('visible'); } }
     function showSidebar() { if (window.innerWidth <= 640) { sidebar.classList.remove('hidden'); chatArea.classList.remove('visible'); } }
     backBtn.onclick = showSidebar;
@@ -420,8 +439,29 @@
     });
 
     forwardCancel.onclick = () => { forwardingMessage = null; forwardBanner.classList.remove('visible'); };
+    replyCancel.onclick = () => { replyingTo = null; replyBanner.classList.remove('visible'); };
 
-    // Проверка сессии и инициализация
+    function forwardMessage(msgId, username, content) {
+        forwardingMessage = { msgId, username, content };
+        forwardLabel.textContent = `↪ Пересылка: "${content.slice(0, 40)}"`;
+        forwardBanner.classList.add('visible');
+        messageInput.focus();
+    }
+
+    function replyToMessage(msgId, username, content) {
+        replyingTo = { msgId, username, content };
+        replyLabel.innerHTML = `💬 Ответ ${username}: "${content.slice(0, 40)}"`;
+        replyBanner.classList.add('visible');
+        messageInput.focus();
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
     (async () => {
         const res = await fetch('/api/me');
         if (!res.ok) { window.location.href = '/login'; return; }
@@ -483,7 +523,6 @@
         if (!file) return;
         const formData = new FormData();
         formData.append('avatar', file);
-        formData.append('userId', currentUser.id);
         const res = await fetch('/api/upload/avatar', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.avatarUrl) {
@@ -627,6 +666,17 @@
         } else {
             content = escapeHtml(msg.content || '');
         }
+        
+        let replyHtml = '';
+        if (msg.reply_to && msg.reply_to_data) {
+            replyHtml = `
+                <div class="reply-quote">
+                    <strong>${escapeHtml(msg.reply_to_data.username)}</strong>
+                    ${escapeHtml(msg.reply_to_data.content.slice(0, 80))}
+                </div>
+            `;
+        }
+        
         const forwardedLabel = msg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(msg.forwarded_from)}</div>` : '';
         const sender = (!isSent && currentChatType === 'group') ? `<div class="message-sender">${escapeHtml(msg.username)}</div>` : '';
         const isRead = msg.read_count && msg.read_count > 1;
@@ -639,10 +689,14 @@
             <div class="message-wrap">
                 <div class="message-actions">
                     <button class="action-btn" onclick="openEmojiPicker(event,${msg.id},${msg.chat_id})">😊</button>
+                    <button class="action-btn" onclick="replyToMessage(${msg.id},'${escapeHtml(msg.username)}','${escapeHtml(msg.content||'')}')">💬</button>
                     <button class="action-btn" onclick="forwardMessage(${msg.id},'${escapeHtml(msg.username)}','${escapeHtml(msg.content||'')}')">↪</button>
                 </div>
                 <div class="message ${isSent ? 'sent' : 'received'}">
-                    ${forwardedLabel}${sender}${content}
+                    ${forwardedLabel}
+                    ${replyHtml}
+                    ${sender}
+                    ${content}
                     <div class="message-footer">
                         <span class="message-time">${time}</span>${ticks}
                     </div>
@@ -696,24 +750,29 @@
         socket.emit('react', { messageId: msgId, userId: currentUser.id, emoji, chatId: currentChat.id });
     }
 
-    function forwardMessage(msgId, username, content) {
-        forwardingMessage = { msgId, username, content };
-        forwardLabel.textContent = `↪ Пересылка: "${content.slice(0, 30)}"`;
-        forwardBanner.classList.add('visible');
-        messageInput.focus();
-    }
-
-    function escapeHtml(text) {
-        const d = document.createElement('div');
-        d.textContent = text;
-        return d.innerHTML;
-    }
-
     sendButton.onclick = () => {
         const text = messageInput.value.trim();
         if (!text || !currentChat) return;
-        const msgData = { chatId: currentChat.id, text, userId: currentUser.id, username: currentUser.username };
-        if (forwardingMessage) { msgData.forwardedFrom = forwardingMessage.username; forwardingMessage = null; forwardBanner.classList.remove('visible'); }
+        
+        let msgData = { 
+            chatId: currentChat.id, 
+            text, 
+            userId: currentUser.id, 
+            username: currentUser.username 
+        };
+        
+        if (replyingTo) {
+            msgData.replyTo = replyingTo;
+            replyingTo = null;
+            replyBanner.classList.remove('visible');
+        }
+        
+        if (forwardingMessage) { 
+            msgData.forwardedFrom = forwardingMessage.username; 
+            forwardingMessage = null; 
+            forwardBanner.classList.remove('visible');
+        }
+        
         socket.emit('new message', msgData);
         socket.emit('stop typing', { chatId: currentChat.id });
         messageInput.value = '';
@@ -780,24 +839,60 @@
         }, 300);
     };
 
-    createGroupBtn.onclick = () => { groupModal.style.display = 'flex'; };
+    createGroupBtn.onclick = () => { 
+    if (groupModal.style.display === 'flex') return;
+    groupModal.style.display = 'flex'; 
+};
     closeModalBtn.onclick = () => { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; };
-    confirmGroupBtn.onclick = async () => {
-        const name = document.getElementById('groupName').value.trim();
-        const membersStr = document.getElementById('groupMembers').value.trim();
-        if (!name) { alert('Введите название группы'); return; }
+let isCreatingGroup = false;
+
+confirmGroupBtn.onclick = async () => {
+    if (isCreatingGroup) return;
+    
+    const name = document.getElementById('groupName').value.trim();
+    const membersStr = document.getElementById('groupMembers').value.trim();
+    
+    if (!name) { alert('Введите название группы'); return; }
+    
+    isCreatingGroup = true;
+    confirmGroupBtn.textContent = 'Создаём...';
+    confirmGroupBtn.disabled = true;
+    
+    try {
         const memberNames = membersStr ? membersStr.split(',').map(s => s.trim()).filter(Boolean) : [];
         const memberIds = [];
+        
         for (const mname of memberNames) {
             const res = await fetch(`/api/users/search?q=${encodeURIComponent(mname)}`);
             const users = await res.json();
             const user = users.find(u => u.username === mname);
             if (user) memberIds.push(user.id);
         }
-        const res = await fetch('/api/chat/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, creatorId: currentUser.id, members: memberIds }) });
-        if (res.ok) { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; await loadChats(); }
-        else { alert('Ошибка создания группы'); }
-    };
+        
+        const res = await fetch('/api/chat/group', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ name, creatorId: currentUser.id, members: memberIds }) 
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+            alert(data.error || 'Ошибка создания группы');
+        } else {
+            groupModal.style.display = 'none';
+            document.getElementById('groupName').value = '';
+            document.getElementById('groupMembers').value = '';
+            await loadChats();
+        }
+    } catch (err) {
+        alert('Ошибка соединения');
+    } finally {
+        isCreatingGroup = false;
+        confirmGroupBtn.textContent = 'Создать';
+        confirmGroupBtn.disabled = false;
+    }
+};
 </script>
 </body>
 </html>
