@@ -47,21 +47,17 @@
             --header-bg: #1e1e1e;
             --online: #4caf50;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-
         body {
             background: var(--bg);
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: background 0.3s;
         }
         [data-theme="light"] body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-
         .main-container {
             display: none;
             width: 100%;
@@ -73,7 +69,6 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
         }
-
         .sidebar {
             width: 280px;
             background: var(--sidebar-bg);
@@ -82,18 +77,17 @@
             flex-direction: column;
             flex-shrink: 0;
         }
-
         .user-info-bar {
             width: 100%; padding: 15px 20px; background: var(--header-bg); color: white;
             border: none; cursor: pointer; display: flex; align-items: center; gap: 12px; text-align: left;
         }
         .user-info-bar:hover { background: var(--primary-dark); }
-
         .theme-toggle {
-            margin-left: auto; background: none; border: none;
-            cursor: pointer; font-size: 18px; padding: 4px; pointer-events: all !important;
+            background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px; color: white;
         }
-
+        .logout-btn {
+            background: none; border: none; cursor: pointer; font-size: 18px; margin-left: 8px; color: white;
+        }
         .search-box { padding: 15px; border-bottom: 1px solid var(--border); }
         .search-box input {
             width: 100%; padding: 10px;
@@ -105,7 +99,6 @@
             border: none; padding: 10px; border-radius: 20px; cursor: pointer; font-size: 14px;
         }
         .create-group-btn:hover { background: var(--primary-dark); }
-
         .chats-list { flex: 1; overflow-y: auto; }
         .chat-item {
             padding: 12px 15px; border-bottom: 1px solid var(--border);
@@ -113,19 +106,18 @@
         }
         .chat-item:hover { background: var(--hover); }
         .chat-item.active { background: var(--active); border-left: 3px solid var(--primary); }
-
         .avatar {
             width: 40px; height: 40px; border-radius: 50%;
             background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 15px; flex-shrink: 0; position: relative; overflow: visible;
+            font-weight: bold; font-size: 15px; flex-shrink: 0; position: relative;
         }
-        .avatar img { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; display: block; }
+        .avatar img { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; }
         .avatar-sm {
             width: 28px; height: 28px; border-radius: 50%;
             background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: bold; flex-shrink: 0; overflow: hidden;
+            font-size: 11px; font-weight: bold; flex-shrink: 0;
         }
         .avatar-sm img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .online-dot {
@@ -133,34 +125,29 @@
             background: var(--online); border: 2px solid var(--surface);
             position: absolute; bottom: 0; right: 0;
         }
-
         .chat-item-info { flex: 1; overflow: hidden; }
         .chat-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
         .chat-name { font-weight: bold; font-size: 14px; color: var(--text); }
-        .chat-time { font-size: 10px; color: var(--text-faint); white-space: nowrap; }
-        .chat-item-bottom { display: flex; justify-content: space-between; align-items: center; }
-        .chat-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .chat-time { font-size: 10px; color: var(--text-faint); }
+        .chat-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .unread-badge {
             background: var(--primary); color: white; border-radius: 10px;
             font-size: 11px; padding: 1px 6px; min-width: 18px; text-align: center;
-            flex-shrink: 0; margin-left: 5px;
         }
-
         .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .chat-header {
             padding: 12px 20px; background: var(--surface);
             border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; gap: 12px; min-height: 62px;
+            display: flex; align-items: center; gap: 12px;
         }
         .back-btn {
             display: none; background: none; border: none; cursor: pointer;
-            font-size: 22px; color: var(--primary); padding: 0 8px 0 0;
+            font-size: 22px; color: var(--primary);
         }
         .chat-header-info { flex: 1; }
         .chat-header-name { font-weight: bold; font-size: 16px; color: var(--text); }
         .chat-header-status { font-size: 12px; color: var(--text-faint); }
         .chat-header-status.online { color: var(--online); }
-
         .messages {
             flex: 1; padding: 20px; overflow-y: auto;
             display: flex; flex-direction: column; gap: 8px;
@@ -170,17 +157,14 @@
         .message-row.sent { flex-direction: row-reverse; }
         .message-wrap { display: flex; flex-direction: column; max-width: 65%; position: relative; }
         .message-row.sent .message-wrap { align-items: flex-end; }
-
         .message { padding: 10px 14px; border-radius: 18px; word-break: break-word; }
         .message.sent { background: var(--msg-sent); color: white; border-bottom-right-radius: 4px; }
         .message.received { background: var(--msg-received); color: var(--msg-received-text); border-bottom-left-radius: 4px; }
         .message-sender { font-size: 11px; font-weight: bold; margin-bottom: 4px; color: var(--primary); }
         .message-footer { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; }
         .message-time { font-size: 10px; opacity: 0.7; }
-        .message-ticks { font-size: 12px; }
         .message-ticks.read { color: #4fc3f7; }
-        .message img { max-width: 200px; max-height: 200px; border-radius: 10px; cursor: pointer; display: block; }
-        .forwarded-label { font-size: 11px; font-style: italic; opacity: 0.75; margin-bottom: 4px; }
+        .message img { max-width: 200px; max-height: 200px; border-radius: 10px; cursor: pointer; }
         .reply-quote {
             background: rgba(0,0,0,0.1);
             border-left: 3px solid var(--primary);
@@ -190,50 +174,34 @@
             font-size: 12px;
         }
         .reply-quote strong { font-size: 11px; display: block; margin-bottom: 2px; }
-
+        .forwarded-label { font-size: 11px; font-style: italic; opacity: 0.75; margin-bottom: 4px; }
         .reactions-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
         .reaction-btn {
             background: rgba(0,0,0,0.07); border: none; border-radius: 12px;
             padding: 2px 7px; font-size: 13px; cursor: pointer;
-            display: flex; align-items: center; gap: 3px; transition: 0.15s;
         }
-        .reaction-btn:hover { background: rgba(0,0,0,0.15); }
         .reaction-btn.mine { background: var(--primary-light); }
-        .reaction-count { font-size: 11px; color: var(--text-muted); }
-
+        .reaction-count { font-size: 11px; margin-left: 3px; }
         .emoji-picker {
             display: none; position: fixed; background: var(--surface);
             border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             padding: 8px; z-index: 100; gap: 4px; flex-wrap: wrap; width: 220px;
-            border: 1px solid var(--border);
         }
         .emoji-picker.visible { display: flex; }
         .emoji-opt { font-size: 20px; cursor: pointer; padding: 4px; border-radius: 8px; }
         .emoji-opt:hover { background: var(--hover); }
-
         .message-actions {
             position: absolute; top: -34px; right: 0; background: var(--surface);
             border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
             padding: 4px; display: none; gap: 2px; z-index: 50;
-            border: 1px solid var(--border);
         }
         .message-wrap:hover .message-actions { display: flex; }
         .action-btn { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-size: 14px; }
         .action-btn:hover { background: var(--hover); }
-
         .typing-indicator {
             padding: 0 20px 8px; font-size: 12px; color: var(--text-faint);
-            font-style: italic; min-height: 24px; display: flex; align-items: center; gap: 6px;
-            background: var(--surface);
+            font-style: italic; min-height: 24px;
         }
-        .typing-dots span {
-            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-            background: var(--text-faint); margin: 0 2px; animation: bounce 1.2s infinite;
-        }
-        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
-
         .input-area {
             padding: 12px 20px; background: var(--input-area-bg);
             display: flex; gap: 10px; align-items: center;
@@ -245,41 +213,29 @@
         .input-area button {
             width: 44px; height: 44px; border: none; border-radius: 50%;
             background: var(--primary); color: white; font-size: 18px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        .input-area button:hover { background: var(--primary-dark); }
-
         .forward-banner, .reply-banner {
             background: var(--primary-light); padding: 8px 20px; font-size: 13px;
             color: var(--primary); display: none; align-items: center; justify-content: space-between;
         }
         .forward-banner.visible, .reply-banner.visible { display: flex; }
         .forward-cancel { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--primary); }
-
-        .flex { display: flex; }
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
         }
         .modal-content { background: var(--surface); padding: 30px; border-radius: 20px; width: 350px; }
-        .modal-content h3 { margin-bottom: 20px; color: var(--primary); }
         .modal-content input {
             width: 100%; padding: 10px; margin: 8px 0;
-            border: 1px solid var(--border); border-radius: 10px; outline: none;
+            border: 1px solid var(--border); border-radius: 10px;
             background: var(--input-bg); color: var(--text);
         }
         .modal-content button {
             width: 100%; padding: 10px; background: var(--primary); color: white;
             border: none; border-radius: 10px; cursor: pointer; margin-top: 10px;
         }
-        .modal-content .cancel-btn { background: var(--border); color: var(--text); }
-
         .empty-state { text-align: center; color: var(--text-faint); margin: auto; padding: 40px; }
-        .empty-state div { font-size: 48px; margin-bottom: 10px; }
-
         @media (max-width: 640px) {
-            body { align-items: flex-start; }
-            .main-container { border-radius: 0; max-height: 100vh; height: 100dvh; width: 100vw; max-width: 100vw; position: relative; overflow: hidden; }
             .sidebar { width: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; transition: transform 0.3s; }
             .sidebar.hidden { transform: translateX(-100%); }
             .chat-area { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 5; transform: translateX(100%); transition: transform 0.3s; background: var(--surface); }
@@ -290,98 +246,69 @@
     </style>
 </head>
 <body>
-
-<div id="mainContainer" class="main-container flex">
+<div class="main-container" id="mainContainer">
     <div class="sidebar" id="sidebar">
-        <button class="user-info-bar" id="userInfoBar">
-            <div class="avatar" id="myAvatar" style="pointer-events:none;">?</div>
-            <div style="pointer-events:none; flex:1;">
+        <div class="user-info-bar" id="userInfoBar">
+            <div class="avatar" id="myAvatar">?</div>
+            <div style="flex:1;">
                 <div style="font-size:15px;font-weight:bold;" id="currentUsername">...</div>
                 <div style="font-size:11px;opacity:0.8;">📷 сменить аватарку</div>
             </div>
-            <button class="theme-toggle" id="themeToggle" title="Сменить тему">🌙</button>
-        </button>
+            <button class="theme-toggle" id="themeToggle">🌙</button>
+            <button class="logout-btn" id="logoutBtn" title="Выйти">🚪</button>
+        </div>
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 Введите имя (2+ буквы) — найдутся похожие">
+            <input type="text" id="searchInput" placeholder="🔍 Введите имя (2+ буквы)">
             <button class="create-group-btn" id="createGroupBtn">👥 + Создать группу</button>
         </div>
-        <div class="chats-list" id="chatsList">
-            <div class="empty-state"><div>💬</div>Загрузка...</div>
-        </div>
+        <div class="chats-list" id="chatsList"><div class="empty-state"><div>💬</div>Загрузка...</div></div>
     </div>
-
     <div class="chat-area" id="chatArea">
         <div class="chat-header" id="chatHeader">
             <button class="back-btn" id="backBtn">←</button>
-            <div style="color:var(--text-faint);font-size:14px;margin:auto;">Выберите чат слева</div>
+            <div style="color:var(--text-faint);">Выберите чат слева</div>
         </div>
-        <div class="messages" id="messages">
-            <div class="empty-state"><div>👈</div>Выберите чат чтобы начать</div>
-        </div>
+        <div class="messages" id="messages"><div class="empty-state"><div>👈</div>Выберите чат</div></div>
         <div class="typing-indicator" id="typingIndicator"></div>
         <div class="forward-banner" id="forwardBanner">
-            <span id="forwardLabel">↪ Пересылка сообщения...</span>
+            <span id="forwardLabel">↪ Пересылка...</span>
             <button class="forward-cancel" id="forwardCancel">✕</button>
         </div>
         <div class="reply-banner" id="replyBanner">
-            <span id="replyLabel">💬 Ответ на сообщение...</span>
+            <span id="replyLabel">💬 Ответ...</span>
             <button class="forward-cancel" id="replyCancel">✕</button>
         </div>
         <div class="input-area" id="inputArea" style="display:none;">
             <input type="text" id="messageInput" placeholder="✏️ Напишите сообщение...">
-            <button id="imageBtn" title="Отправить фото">📷</button>
+            <button id="imageBtn" title="Фото">📷</button>
             <button id="sendButton" title="Отправить">➤</button>
         </div>
     </div>
 </div>
-
 <div id="groupModal" class="modal">
     <div class="modal-content">
-        <h3>👥 Создать группу</h3>
-        <input type="text" id="groupName" placeholder="Название группы">
+        <h3>Создать группу</h3>
+        <input type="text" id="groupName" placeholder="Название">
         <input type="text" id="groupMembers" placeholder="Участники (имена через запятую)">
         <button id="confirmGroupBtn">Создать</button>
         <button id="closeModalBtn" class="cancel-btn">Отмена</button>
     </div>
 </div>
-
 <div class="emoji-picker" id="emojiPicker">
-    <span class="emoji-opt">👍</span>
-    <span class="emoji-opt">❤️</span>
-    <span class="emoji-opt">😂</span>
-    <span class="emoji-opt">😮</span>
-    <span class="emoji-opt">😢</span>
-    <span class="emoji-opt">🔥</span>
-    <span class="emoji-opt">💩</span>
-    <span class="emoji-opt">🎉</span>
-    <span class="emoji-opt">👀</span>
+    <span class="emoji-opt">👍</span><span class="emoji-opt">❤️</span><span class="emoji-opt">😂</span>
+    <span class="emoji-opt">😮</span><span class="emoji-opt">😢</span><span class="emoji-opt">🔥</span>
+    <span class="emoji-opt">💩</span><span class="emoji-opt">🎉</span><span class="emoji-opt">👀</span>
     <span class="emoji-opt">😎</span>
 </div>
-
 <input type="file" id="imageInput" accept="image/*" style="display:none;">
 <input type="file" id="avatarInput" accept="image/*" style="display:none;">
-
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const originalFetch = window.fetch;
-    window.fetch = (url, options = {}) => {
-        options.credentials = 'include';
-        return originalFetch(url, options);
-    };
-
-    let currentUser = null;
-    let currentChat = null;
-    let currentChatType = null;
-    let currentChatPartnerId = null;
-    let socket = null;
-    let allChats = [];
-    const onlineUsers = new Set();
-    let typingTimeout = null;
-    let forwardingMessage = null;
-    let replyingTo = null;
-    let emojiTargetMsgId = null;
-    let emojiTargetChatId = null;
-
+    window.fetch = (url, options = {}) => { options.credentials = 'include'; return originalFetch(url, options); };
+    let currentUser = null, currentChat = null, currentChatType = null, currentChatPartnerId = null;
+    let socket = null, allChats = [], onlineUsers = new Set(), typingTimeout = null;
+    let forwardingMessage = null, replyingTo = null, emojiTargetMsgId = null, emojiTargetChatId = null;
     const mainContainer = document.getElementById('mainContainer');
     const currentUsernameSpan = document.getElementById('currentUsername');
     const searchInput = document.getElementById('searchInput');
@@ -402,147 +329,34 @@
     const myAvatarEl = document.getElementById('myAvatar');
     const emojiPicker = document.getElementById('emojiPicker');
     const forwardBanner = document.getElementById('forwardBanner');
-    const forwardLabel = document.getElementById('forwardLabel');
     const forwardCancel = document.getElementById('forwardCancel');
     const replyBanner = document.getElementById('replyBanner');
-    const replyLabel = document.getElementById('replyLabel');
     const replyCancel = document.getElementById('replyCancel');
     const sidebar = document.getElementById('sidebar');
     const chatArea = document.getElementById('chatArea');
     const backBtn = document.getElementById('backBtn');
     const themeToggle = document.getElementById('themeToggle');
-
+    const logoutBtn = document.getElementById('logoutBtn');
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-    themeToggle.onclick = (e) => {
-        e.stopPropagation();
-        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        themeToggle.textContent = next === 'dark' ? '☀️' : '🌙';
-    };
-
+    themeToggle.onclick = (e) => { e.stopPropagation(); const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); localStorage.setItem('theme', next); themeToggle.textContent = next === 'dark' ? '☀️' : '🌙'; };
     function showChat() { if (window.innerWidth <= 640) { sidebar.classList.add('hidden'); chatArea.classList.add('visible'); } }
     function showSidebar() { if (window.innerWidth <= 640) { sidebar.classList.remove('hidden'); chatArea.classList.remove('visible'); } }
     backBtn.onclick = showSidebar;
-
     document.addEventListener('click', (e) => { if (!emojiPicker.contains(e.target)) emojiPicker.classList.remove('visible'); });
-
-    document.querySelectorAll('.emoji-opt').forEach(el => {
-        el.onclick = (e) => {
-            e.stopPropagation();
-            if (!emojiTargetMsgId) return;
-            socket.emit('react', { messageId: emojiTargetMsgId, userId: currentUser.id, emoji: el.textContent, chatId: emojiTargetChatId });
-            emojiPicker.classList.remove('visible');
-        };
-    });
-
+    document.querySelectorAll('.emoji-opt').forEach(el => { el.onclick = (e) => { e.stopPropagation(); if (!emojiTargetMsgId) return; socket.emit('react', { messageId: emojiTargetMsgId, userId: currentUser.id, emoji: el.textContent, chatId: emojiTargetChatId }); emojiPicker.classList.remove('visible'); }; });
     forwardCancel.onclick = () => { forwardingMessage = null; forwardBanner.classList.remove('visible'); };
     replyCancel.onclick = () => { replyingTo = null; replyBanner.classList.remove('visible'); };
-
-    function forwardMessage(msgId, username, content) {
-        forwardingMessage = { msgId, username, content };
-        forwardLabel.textContent = `↪ Пересылка: "${content.slice(0, 40)}"`;
-        forwardBanner.classList.add('visible');
-        messageInput.focus();
-    }
-
-    function replyToMessage(msgId, username, content) {
-        replyingTo = { msgId, username, content };
-        replyLabel.innerHTML = `💬 Ответ ${username}: "${content.slice(0, 40)}"`;
-        replyBanner.classList.add('visible');
-        messageInput.focus();
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        const d = document.createElement('div');
-        d.textContent = text;
-        return d.innerHTML;
-    }
-
-    (async () => {
-        const res = await fetch('/api/me');
-        if (!res.ok) { window.location.href = '/login'; return; }
-        const user = await res.json();
-
-        currentUser = user;
-        currentUsernameSpan.textContent = user.username;
-        myAvatarEl.innerHTML = user.avatar
-            ? `<img src="${user.avatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">`
-            : user.username[0].toUpperCase();
-
-        mainContainer.style.display = 'flex';
-
-        socket = io();
-        socket.emit('auth', currentUser.id);
-
-        const onlineRes = await fetch('/api/online-users');
-        (await onlineRes.json()).forEach(id => onlineUsers.add(id));
-
-        socket.on('user online', (userId) => { onlineUsers.add(userId); renderOnlineInHeader(); loadChats(); });
-        socket.on('user offline', (userId) => { onlineUsers.delete(userId); renderOnlineInHeader(); loadChats(); });
-
-        socket.on('typing', ({ username }) => {
-            typingIndicator.innerHTML = `<span>${escapeHtml(username)} печатает</span><span class="typing-dots"><span></span><span></span><span></span></span>`;
-        });
-        socket.on('stop typing', () => { typingIndicator.innerHTML = ''; });
-
-        socket.on('new message', (msg) => {
-            if (currentChat && msg.chat_id === currentChat.id) {
-                addMessageToChat(msg, msg.user_id === currentUser.id);
-                typingIndicator.innerHTML = '';
-                socket.emit('read messages', { chatId: currentChat.id, userId: currentUser.id });
-            }
-            loadChats();
-        });
-
-        socket.on('messages read', ({ chatId, userId }) => {
-            if (userId !== currentUser.id) {
-                document.querySelectorAll(`.msg-ticks[data-chat="${chatId}"]`).forEach(el => {
-                    el.textContent = '✓✓'; el.classList.add('read');
-                });
-            }
-        });
-
-        socket.on('reaction updated', ({ messageId, userId, emoji, removed }) => {
-            updateReactionInDOM(messageId, userId, emoji, removed);
-        });
-
-        await loadChats();
-    })();
-
-    document.getElementById('userInfoBar').onclick = (e) => {
-        if (e.target === themeToggle) return;
-        avatarInput.click();
-    };
-
-    avatarInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('avatar', file);
-        const res = await fetch('/api/upload/avatar', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.avatarUrl) {
-            currentUser.avatar = data.avatarUrl;
-            myAvatarEl.innerHTML = `<img src="${data.avatarUrl}" width="40" height="40" style="border-radius:50%;object-fit:cover;">`;
-        }
-        avatarInput.value = '';
-    };
-
+    function forwardMessage(msgId, username, content) { forwardingMessage = { msgId, username, content }; forwardLabel.textContent = `↪ Пересылка: "${content.slice(0, 40)}"`; forwardBanner.classList.add('visible'); messageInput.focus(); }
+    function replyToMessage(msgId, username, content) { replyingTo = { msgId, username, content }; replyLabel.innerHTML = `💬 Ответ ${username}: "${content.slice(0, 40)}"`; replyBanner.classList.add('visible'); messageInput.focus(); }
+    function escapeHtml(text) { if (!text) return ''; const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
     async function loadChats() {
         const res = await fetch(`/api/chats/${currentUser.id}`);
         if (!res.ok) return;
         const chats = await res.json();
         allChats = chats || [];
-
-        if (!allChats.length) {
-            chatsList.innerHTML = '<div class="empty-state"><div>📭</div>Нет чатов. Найдите пользователя через поиск</div>';
-            return;
-        }
-
+        if (!allChats.length) { chatsList.innerHTML = '<div class="empty-state"><div>📭</div>Нет чатов. Найдите пользователя через поиск</div>'; return; }
         const activeChatId = currentChat ? currentChat.id : null;
         const chatItems = await Promise.all(allChats.map(async (chat) => {
             let displayName = chat.name, partnerId = null, partnerAvatar = null;
@@ -562,96 +376,34 @@
             const unread = chat.unread_count || 0;
             return { chat, displayName, partnerId, partnerAvatar, isOnline, time, preview, unread };
         }));
-
         chatsList.innerHTML = chatItems.map(({ chat, displayName, partnerId, partnerAvatar, isOnline, time, preview, unread }) => {
-            let avEl = chat.type === 'group'
-                ? `<div class="avatar">👥</div>`
-                : partnerAvatar
-                    ? `<div class="avatar"><img src="${partnerAvatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">${isOnline ? '<div class="online-dot"></div>' : ''}</div>`
-                    : `<div class="avatar">${(displayName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
-            return `<div class="chat-item ${activeChatId === chat.id ? 'active' : ''}"
-                     data-chat-id="${chat.id}" data-chat-type="${chat.type}"
-                     data-chat-name="${escapeHtml(displayName)}"
-                     data-partner-id="${partnerId||''}" data-partner-avatar="${partnerAvatar||''}">
-                    ${avEl}
-                    <div class="chat-item-info">
-                        <div class="chat-item-top">
-                            <div class="chat-name">${escapeHtml(displayName)}</div>
-                            <div class="chat-time">${time}</div>
-                        </div>
-                        <div class="chat-item-bottom">
-                            <div class="chat-preview">${escapeHtml(preview)}</div>
-                            ${unread > 0 ? `<div class="unread-badge">${unread}</div>` : ''}
-                        </div>
-                    </div>
-                </div>`;
+            let avEl = chat.type === 'group' ? '<div class="avatar">👥</div>' : (partnerAvatar ? `<div class="avatar"><img src="${partnerAvatar}">${isOnline ? '<div class="online-dot"></div>' : ''}</div>` : `<div class="avatar">${(displayName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`);
+            return `<div class="chat-item ${activeChatId === chat.id ? 'active' : ''}" data-chat-id="${chat.id}" data-chat-type="${chat.type}" data-chat-name="${escapeHtml(displayName)}" data-partner-id="${partnerId||''}" data-partner-avatar="${partnerAvatar||''}">${avEl}<div class="chat-item-info"><div class="chat-item-top"><div class="chat-name">${escapeHtml(displayName)}</div><div class="chat-time">${time}</div></div><div class="chat-item-bottom"><div class="chat-preview">${escapeHtml(preview)}</div>${unread > 0 ? `<div class="unread-badge">${unread}</div>` : ''}</div></div></div>`;
         }).join('');
-
-        document.querySelectorAll('.chat-item').forEach(el => {
-            el.onclick = () => {
-                document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active'));
-                el.classList.add('active');
-                loadChat(parseInt(el.dataset.chatId), el.dataset.chatType, el.dataset.chatName,
-                    el.dataset.partnerId ? parseInt(el.dataset.partnerId) : null, el.dataset.partnerAvatar || null);
-            };
-        });
+        document.querySelectorAll('.chat-item').forEach(el => { el.onclick = () => { document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active')); el.classList.add('active'); loadChat(parseInt(el.dataset.chatId), el.dataset.chatType, el.dataset.chatName, el.dataset.partnerId ? parseInt(el.dataset.partnerId) : null, el.dataset.partnerAvatar || null); }; });
     }
-
     async function loadChat(chatId, chatType, chatName, partnerId, partnerAvatar) {
         const res = await fetch(`/api/messages/${chatId}`);
         if (!res.ok) return;
         const messages = await res.json();
-
         currentChat = { id: chatId };
         currentChatType = chatType;
         currentChatPartnerId = partnerId;
-
-        renderChatHeader(chatType, chatName, partnerId, partnerAvatar);
+        const isOnline = partnerId !== null && onlineUsers.has(partnerId);
+        chatHeader.innerHTML = `<button class="back-btn" id="backBtn">←</button>${chatType === 'group' ? '<div class="avatar">👥</div>' : (partnerAvatar ? `<div class="avatar"><img src="${partnerAvatar}">${isOnline ? '<div class="online-dot"></div>' : ''}</div>` : `<div class="avatar">${(chatName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`)}<div class="chat-header-info"><div class="chat-header-name">${escapeHtml(chatName||'Чат')}</div><div class="chat-header-status ${isOnline ? 'online' : ''}">${chatType === 'private' ? (isOnline ? 'онлайн' : 'оффлайн') : 'группа'}</div></div>`;
+        document.getElementById('backBtn').onclick = showSidebar;
         inputArea.style.display = 'flex';
         typingIndicator.innerHTML = '';
         messagesDiv.innerHTML = '';
-
-        if (messages && messages.length > 0) {
-            messages.forEach(msg => addMessageToChat(msg, msg.user_id === currentUser.id));
-        } else {
-            messagesDiv.innerHTML = '<div class="empty-state"><div>💭</div>Напишите первое сообщение</div>';
-        }
-
+        if (messages && messages.length > 0) messages.forEach(msg => addMessageToChat(msg, msg.user_id === currentUser.id));
+        else messagesDiv.innerHTML = '<div class="empty-state"><div>💭</div>Напишите первое сообщение</div>';
         socket.emit('join chat', chatId);
         socket.emit('read messages', { chatId, userId: currentUser.id });
         messageInput.focus();
         showChat();
-
         const chatEl = document.querySelector(`.chat-item[data-chat-id="${chatId}"]`);
         if (chatEl) { const badge = chatEl.querySelector('.unread-badge'); if (badge) badge.remove(); }
     }
-
-    function renderChatHeader(chatType, chatName, partnerId, partnerAvatar) {
-        const isOnline = partnerId !== null && onlineUsers.has(partnerId);
-        const statusText = chatType === 'private' ? (isOnline ? 'онлайн' : 'оффлайн') : 'группа';
-        const statusClass = isOnline ? 'online' : '';
-        let avEl = chatType === 'group'
-            ? `<div class="avatar">👥</div>`
-            : partnerAvatar
-                ? `<div class="avatar"><img src="${partnerAvatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">${isOnline ? '<div class="online-dot"></div>' : ''}</div>`
-                : `<div class="avatar">${(chatName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
-        chatHeader.innerHTML = `
-            <button class="back-btn" id="backBtn">←</button>
-            ${avEl}
-            <div class="chat-header-info">
-                <div class="chat-header-name">${escapeHtml(chatName || 'Чат')}</div>
-                <div class="chat-header-status ${statusClass}">${statusText}</div>
-            </div>`;
-        document.getElementById('backBtn').onclick = showSidebar;
-    }
-
-    function renderOnlineInHeader() {
-        if (currentChat && currentChatType === 'private' && currentChatPartnerId) {
-            const item = document.querySelector(`.chat-item[data-chat-id="${currentChat.id}"]`);
-            if (item) renderChatHeader(currentChatType, item.dataset.chatName, currentChatPartnerId, item.dataset.partnerAvatar || null);
-        }
-    }
-
     function addMessageToChat(msg, isSent) {
         const empty = messagesDiv.querySelector('.empty-state');
         if (empty) empty.remove();
@@ -660,239 +412,114 @@
         row.dataset.msgId = msg.id;
         const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         let content = '';
-        if (msg.content && (msg.content.includes('/uploads/') || msg.image_url)) {
-            const url = msg.image_url || msg.content;
-            content = `<img src="${url}" onclick="window.open('${url}')">`;
-        } else {
-            content = escapeHtml(msg.content || '');
-        }
-        
+        if (msg.content && (msg.content.includes('/uploads/') || msg.image_url)) { const url = msg.image_url || msg.content; content = `<img src="${url}" onclick="window.open('${url}')">`; }
+        else content = escapeHtml(msg.content || '');
         let replyHtml = '';
-        if (msg.reply_to && msg.reply_to_data) {
-            replyHtml = `
-                <div class="reply-quote">
-                    <strong>${escapeHtml(msg.reply_to_data.username)}</strong>
-                    ${escapeHtml(msg.reply_to_data.content.slice(0, 80))}
-                </div>
-            `;
-        }
-        
+        if (msg.reply_to && msg.reply_to_data) replyHtml = `<div class="reply-quote"><strong>${escapeHtml(msg.reply_to_data.username)}</strong>${escapeHtml(msg.reply_to_data.content.slice(0, 80))}</div>`;
         const forwardedLabel = msg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(msg.forwarded_from)}</div>` : '';
         const sender = (!isSent && currentChatType === 'group') ? `<div class="message-sender">${escapeHtml(msg.username)}</div>` : '';
         const isRead = msg.read_count && msg.read_count > 1;
-        const ticks = isSent ? `<span class="message-ticks msg-ticks ${isRead ? 'read' : ''}" data-chat="${msg.chat_id}">✓✓</span>` : '';
-        const reactionsHtml = buildReactionsHtml(msg.id, msg.reactions || {});
-        let avEl = !isSent
-            ? (msg.avatar ? `<div class="avatar-sm"><img src="${msg.avatar}" width="28" height="28" style="border-radius:50%;object-fit:cover;"></div>` : `<div class="avatar-sm">${(msg.username||'?')[0].toUpperCase()}</div>`)
-            : '';
-        row.innerHTML = `${avEl}
-            <div class="message-wrap">
-                <div class="message-actions">
-                    <button class="action-btn" onclick="openEmojiPicker(event,${msg.id},${msg.chat_id})">😊</button>
-                    <button class="action-btn" onclick="replyToMessage(${msg.id},'${escapeHtml(msg.username)}','${escapeHtml(msg.content||'')}')">💬</button>
-                    <button class="action-btn" onclick="forwardMessage(${msg.id},'${escapeHtml(msg.username)}','${escapeHtml(msg.content||'')}')">↪</button>
-                </div>
-                <div class="message ${isSent ? 'sent' : 'received'}">
-                    ${forwardedLabel}
-                    ${replyHtml}
-                    ${sender}
-                    ${content}
-                    <div class="message-footer">
-                        <span class="message-time">${time}</span>${ticks}
-                    </div>
-                </div>
-                <div class="reactions-bar" id="reactions-${msg.id}">${reactionsHtml}</div>
-            </div>`;
+        const ticks = isSent ? `<span class="message-ticks ${isRead ? 'read' : ''}">✓✓</span>` : '';
+        // Пометка "ред." если сообщение редактировалось
+        const editedMark = msg.edited ? '<span style="font-size:10px; opacity:0.6; margin-left:6px;">(ред.)</span>' : '';
+        const reactionsHtml = Object.entries(msg.reactions || {}).map(([emoji, users]) => `<button class="reaction-btn ${users.includes(currentUser.id) ? 'mine' : ''}" onclick="toggleReaction(${msg.id},'${emoji}')">${emoji}<span class="reaction-count">${users.length}</span></button>`).join('');
+        let avEl = !isSent ? (msg.avatar ? `<div class="avatar-sm"><img src="${msg.avatar}"></div>` : `<div class="avatar-sm">${(msg.username||'?')[0].toUpperCase()}</div>`) : '';
+        row.innerHTML = `${avEl}<div class="message-wrap"><div class="message-actions"><button class="action-btn" onclick="openEmojiPicker(event,${msg.id},${msg.chat_id})">😊</button><button class="action-btn" onclick="replyToMessage(${msg.id},'${escapeHtml(msg.username)}','${escapeHtml(msg.content||'')}')">💬</button><button class="action-btn" onclick="forwardMessage(${msg.id},'${escapeHtml(msg.username)}','${escapeHtml(msg.content||'')}')">↪</button>${isSent ? `<button class="action-btn" onclick="editMessage(${msg.id}, '${escapeHtml(msg.content||'').replace(/'/g, "\\'")}')">✏️</button><button class="action-btn" onclick="deleteMessage(${msg.id})">🗑️</button>` : ''}</div><div class="message ${isSent ? 'sent' : 'received'}">${forwardedLabel}${replyHtml}${sender}${content}${editedMark}<div class="message-footer"><span class="message-time">${time}</span>${ticks}</div></div><div class="reactions-bar" id="reactions-${msg.id}">${reactionsHtml}</div></div>`;
         messagesDiv.appendChild(row);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
-
-    function buildReactionsHtml(msgId, reactions) {
-        return Object.entries(reactions).map(([emoji, users]) => {
-            const mine = users.includes(currentUser.id);
-            return `<button class="reaction-btn ${mine?'mine':''}" onclick="toggleReaction(${msgId},'${emoji}')">${emoji} <span class="reaction-count">${users.length}</span></button>`;
-        }).join('');
+    // Редактирование сообщения
+    function editMessage(messageId, oldContent) {
+        const newContent = prompt('Редактировать сообщение:', oldContent);
+        if (!newContent || newContent.trim() === oldContent) return;
+        fetch(`/api/messages/${messageId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: newContent.trim() })
+        }).catch(err => console.error('Ошибка:', err));
     }
-
+    // Удаление сообщения
+    function deleteMessage(messageId) {
+        if (!confirm('Удалить сообщение?')) return;
+        fetch(`/api/messages/${messageId}`, {
+            method: 'DELETE'
+        }).catch(err => console.error('Ошибка:', err));
+    }
+    function toggleReaction(msgId, emoji) { if (!currentChat) return; socket.emit('react', { messageId: msgId, userId: currentUser.id, emoji, chatId: currentChat.id }); }
+    function openEmojiPicker(e, msgId, chatId) { e.stopPropagation(); emojiTargetMsgId = msgId; emojiTargetChatId = chatId; const rect = e.target.getBoundingClientRect(); emojiPicker.style.top = (rect.top - 60) + 'px'; emojiPicker.style.left = rect.left + 'px'; emojiPicker.classList.toggle('visible'); }
     function updateReactionInDOM(messageId, userId, emoji, removed) {
         const row = document.querySelector(`.message-row[data-msg-id="${messageId}"]`);
         if (!row) return;
         const bar = row.querySelector(`#reactions-${messageId}`);
         if (!bar) return;
-        const existing = {};
-        bar.querySelectorAll('.reaction-btn').forEach(btn => {
-            const e = btn.textContent.trim().replace(/\d+/g,'').trim();
-            const count = parseInt(btn.querySelector('.reaction-count').textContent);
-            existing[e] = { count, mine: btn.classList.contains('mine') };
-        });
-        if (removed) {
-            if (existing[emoji]) { existing[emoji].count--; if (userId===currentUser.id) existing[emoji].mine=false; if (existing[emoji].count<=0) delete existing[emoji]; }
-        } else {
-            if (!existing[emoji]) existing[emoji]={count:0,mine:false};
-            existing[emoji].count++; if (userId===currentUser.id) existing[emoji].mine=true;
-        }
-        bar.innerHTML = Object.entries(existing).map(([e,{count,mine}]) =>
-            `<button class="reaction-btn ${mine?'mine':''}" onclick="toggleReaction(${messageId},'${e}')">${e} <span class="reaction-count">${count}</span></button>`
-        ).join('');
+        const reactions = {};
+        bar.querySelectorAll('.reaction-btn').forEach(btn => { const e = btn.textContent.trim().replace(/\d+/g,'').trim(); const count = parseInt(btn.querySelector('.reaction-count')?.textContent || '1'); const mine = btn.classList.contains('mine'); reactions[e] = { count, mine }; });
+        if (removed) { if (reactions[emoji]) { reactions[emoji].count--; if (userId === currentUser.id) reactions[emoji].mine = false; if (reactions[emoji].count <= 0) delete reactions[emoji]; } }
+        else { if (!reactions[emoji]) reactions[emoji] = { count: 0, mine: false }; reactions[emoji].count++; if (userId === currentUser.id) reactions[emoji].mine = true; }
+        bar.innerHTML = Object.entries(reactions).map(([e, { count, mine }]) => `<button class="reaction-btn ${mine ? 'mine' : ''}" onclick="toggleReaction(${messageId},'${e}')">${e}<span class="reaction-count">${count}</span></button>`).join('');
     }
-
-    function openEmojiPicker(e, msgId, chatId) {
-        e.stopPropagation();
-        emojiTargetMsgId = msgId; emojiTargetChatId = chatId;
-        const rect = e.target.getBoundingClientRect();
-        emojiPicker.style.top = (rect.top - 60) + 'px';
-        emojiPicker.style.left = rect.left + 'px';
-        emojiPicker.classList.toggle('visible');
-    }
-
-    function toggleReaction(msgId, emoji) {
-        if (!currentChat) return;
-        socket.emit('react', { messageId: msgId, userId: currentUser.id, emoji, chatId: currentChat.id });
-    }
-
-    sendButton.onclick = () => {
-        const text = messageInput.value.trim();
-        if (!text || !currentChat) return;
-        
-        let msgData = { 
-            chatId: currentChat.id, 
-            text, 
-            userId: currentUser.id, 
-            username: currentUser.username 
-        };
-        
-        if (replyingTo) {
-            msgData.replyTo = replyingTo;
-            replyingTo = null;
-            replyBanner.classList.remove('visible');
-        }
-        
-        if (forwardingMessage) { 
-            msgData.forwardedFrom = forwardingMessage.username; 
-            forwardingMessage = null; 
-            forwardBanner.classList.remove('visible');
-        }
-        
-        socket.emit('new message', msgData);
-        socket.emit('stop typing', { chatId: currentChat.id });
-        messageInput.value = '';
-    };
-
+    sendButton.onclick = () => { const text = messageInput.value.trim(); if (!text || !currentChat) return; let msgData = { chatId: currentChat.id, text, userId: currentUser.id, username: currentUser.username }; if (replyingTo) { msgData.replyTo = replyingTo; replyingTo = null; replyBanner.classList.remove('visible'); } if (forwardingMessage) { msgData.forwardedFrom = forwardingMessage.username; forwardingMessage = null; forwardBanner.classList.remove('visible'); } socket.emit('new message', msgData); socket.emit('stop typing', { chatId: currentChat.id }); messageInput.value = ''; };
     messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendButton.click(); };
-    messageInput.oninput = () => {
-        if (!currentChat) return;
-        socket.emit('typing', { chatId: currentChat.id, username: currentUser.username });
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => socket.emit('stop typing', { chatId: currentChat.id }), 2000);
-    };
-
+    messageInput.oninput = () => { if (!currentChat) return; socket.emit('typing', { chatId: currentChat.id, username: currentUser.username }); clearTimeout(typingTimeout); typingTimeout = setTimeout(() => socket.emit('stop typing', { chatId: currentChat.id }), 2000); };
     imageBtn.onclick = () => imageInput.click();
-    imageInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file || !currentChat) return;
-        const formData = new FormData();
-        formData.append('image', file);
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        socket.emit('new message', { chatId: currentChat.id, text: data.imageUrl, userId: currentUser.id, username: currentUser.username, isImage: true, imageUrl: data.imageUrl });
-        imageInput.value = '';
-    };
-
-    let searchTimeout;
-    searchInput.oninput = () => {
-        clearTimeout(searchTimeout);
-        const query = searchInput.value.trim();
-        if (query.length < 2) { loadChats(); return; }
-        searchTimeout = setTimeout(async () => {
-            const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-            if (!res.ok) return;
-            const users = await res.json();
-            const filtered = users.filter(u => u.id !== currentUser.id);
-            if (!filtered.length) { chatsList.innerHTML = '<div class="empty-state"><div>👻</div>Пользователи не найдены</div>'; return; }
-            chatsList.innerHTML = filtered.map(user => `
-                <div class="chat-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-avatar="${user.avatar||''}">
-                    <div class="avatar" style="position:relative;">
-                        ${user.avatar ? `<img src="${user.avatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">` : user.username[0].toUpperCase()}
-                        ${onlineUsers.has(user.id) ? '<div class="online-dot"></div>' : ''}
-                    </div>
-                    <div class="chat-item-info">
-                        <div class="chat-name">${escapeHtml(user.username)}</div>
-                        <div class="chat-preview">${onlineUsers.has(user.id) ? '🟢 онлайн' : 'Нажмите чтобы написать'}</div>
-                    </div>
-                </div>`).join('');
-            document.querySelectorAll('[data-user-id]').forEach(el => {
-                el.onclick = async () => {
-                    const userId = parseInt(el.dataset.userId);
-                    const username = el.dataset.username;
-                    const avatar = el.dataset.avatar || null;
-                    const res = await fetch('/api/chat/private', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user1: currentUser.id, user2: userId }) });
-                    if (!res.ok) return;
-                    const data = await res.json();
-                    searchInput.value = '';
-                    await loadChats();
-                    loadChat(data.chatId, 'private', username, userId, avatar);
-                    document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active'));
-                    const item = document.querySelector(`.chat-item[data-chat-id="${data.chatId}"]`);
-                    if (item) item.classList.add('active');
-                };
-            });
-        }, 300);
-    };
-
-    createGroupBtn.onclick = () => { 
-    if (groupModal.style.display === 'flex') return;
-    groupModal.style.display = 'flex'; 
-};
+    imageInput.onchange = async (e) => { const file = e.target.files[0]; if (!file || !currentChat) return; const formData = new FormData(); formData.append('image', file); const res = await fetch('/api/upload', { method: 'POST', body: formData }); const data = await res.json(); socket.emit('new message', { chatId: currentChat.id, text: data.imageUrl, userId: currentUser.id, username: currentUser.username, isImage: true, imageUrl: data.imageUrl }); imageInput.value = ''; };
+    createGroupBtn.onclick = () => { if (groupModal.style.display === 'flex') return; groupModal.style.display = 'flex'; };
     closeModalBtn.onclick = () => { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; };
-let isCreatingGroup = false;
-
-confirmGroupBtn.onclick = async () => {
-    if (isCreatingGroup) return;
-    
-    const name = document.getElementById('groupName').value.trim();
-    const membersStr = document.getElementById('groupMembers').value.trim();
-    
-    if (!name) { alert('Введите название группы'); return; }
-    
-    isCreatingGroup = true;
-    confirmGroupBtn.textContent = 'Создаём...';
-    confirmGroupBtn.disabled = true;
-    
-    try {
-        const memberNames = membersStr ? membersStr.split(',').map(s => s.trim()).filter(Boolean) : [];
-        const memberIds = [];
-        
-        for (const mname of memberNames) {
-            const res = await fetch(`/api/users/search?q=${encodeURIComponent(mname)}`);
-            const users = await res.json();
-            const user = users.find(u => u.username === mname);
-            if (user) memberIds.push(user.id);
-        }
-        
-        const res = await fetch('/api/chat/group', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ name, creatorId: currentUser.id, members: memberIds }) 
+    let isCreatingGroup = false;
+    confirmGroupBtn.onclick = async () => { if (isCreatingGroup) return; const name = document.getElementById('groupName').value.trim(); const membersStr = document.getElementById('groupMembers').value.trim(); if (!name) { alert('Введите название группы'); return; } isCreatingGroup = true; confirmGroupBtn.textContent = 'Создаём...'; confirmGroupBtn.disabled = true; try { const memberNames = membersStr ? membersStr.split(',').map(s => s.trim()).filter(Boolean) : []; const memberIds = []; for (const mname of memberNames) { const res = await fetch(`/api/users/search?q=${encodeURIComponent(mname)}`); const users = await res.json(); const user = users.find(u => u.username === mname); if (user) memberIds.push(user.id); } const res = await fetch('/api/chat/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, creatorId: currentUser.id, members: memberIds }) }); const data = await res.json(); if (!res.ok) alert(data.error || 'Ошибка создания группы'); else { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; await loadChats(); } } catch (err) { alert('Ошибка соединения'); } finally { isCreatingGroup = false; confirmGroupBtn.textContent = 'Создать'; confirmGroupBtn.disabled = false; } };
+    let searchTimeout;
+    searchInput.oninput = () => { clearTimeout(searchTimeout); const query = searchInput.value.trim(); if (query.length < 2) { loadChats(); return; } searchTimeout = setTimeout(async () => { const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`); if (!res.ok) return; const users = await res.json(); const filtered = users.filter(u => u.id !== currentUser.id); if (!filtered.length) { chatsList.innerHTML = '<div class="empty-state"><div>👻</div>Пользователи не найдены</div>'; return; } chatsList.innerHTML = filtered.map(user => `<div class="chat-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-avatar="${user.avatar||''}"><div class="avatar" style="position:relative;">${user.avatar ? `<img src="${user.avatar}">` : user.username[0].toUpperCase()}${onlineUsers.has(user.id) ? '<div class="online-dot"></div>' : ''}</div><div class="chat-item-info"><div class="chat-name">${escapeHtml(user.username)}</div><div class="chat-preview">${onlineUsers.has(user.id) ? '🟢 онлайн' : 'Нажмите чтобы написать'}</div></div></div>`).join(''); document.querySelectorAll('[data-user-id]').forEach(el => { el.onclick = async () => { const userId = parseInt(el.dataset.userId); const username = el.dataset.username; const avatar = el.dataset.avatar || null; const res = await fetch('/api/chat/private', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user1: currentUser.id, user2: userId }) }); if (!res.ok) return; const data = await res.json(); searchInput.value = ''; await loadChats(); loadChat(data.chatId, 'private', username, userId, avatar); document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active')); const item = document.querySelector(`.chat-item[data-chat-id="${data.chatId}"]`); if (item) item.classList.add('active'); }; }); }, 300); };
+    (async () => {
+        const res = await fetch('/api/me');
+        if (!res.ok) { window.location.href = '/login'; return; }
+        currentUser = await res.json();
+        currentUsernameSpan.textContent = currentUser.username;
+        myAvatarEl.innerHTML = currentUser.avatar ? `<img src="${currentUser.avatar}">` : currentUser.username[0].toUpperCase();
+        mainContainer.style.display = 'flex';
+        socket = io();
+        socket.emit('auth', currentUser.id);
+        const onlineRes = await fetch('/api/online-users');
+        (await onlineRes.json()).forEach(id => onlineUsers.add(id));
+        socket.on('user online', (userId) => { onlineUsers.add(userId); loadChats(); });
+        socket.on('user offline', (userId) => { onlineUsers.delete(userId); loadChats(); });
+        socket.on('typing', ({ username }) => { typingIndicator.innerHTML = `${escapeHtml(username)} печатает...`; });
+        socket.on('stop typing', () => { typingIndicator.innerHTML = ''; });
+        socket.on('new message', (msg) => { if (currentChat && msg.chat_id === currentChat.id) { addMessageToChat(msg, msg.user_id === currentUser.id); typingIndicator.innerHTML = ''; socket.emit('read messages', { chatId: currentChat.id, userId: currentUser.id }); } loadChats(); });
+        // Обработка редактирования сообщения
+        socket.on('message edited', (updatedMsg) => {
+            const row = document.querySelector(`.message-row[data-msg-id="${updatedMsg.id}"]`);
+            if (row) {
+                const msgDiv = row.querySelector('.message');
+                if (msgDiv) {
+                    let content = updatedMsg.content;
+                    if (content.includes('/uploads/')) {
+                        content = `<img src="${content}" onclick="window.open('${content}')">`;
+                    } else {
+                        content = escapeHtml(content);
+                    }
+                    const editedMark = updatedMsg.edited ? '<span style="font-size:10px; opacity:0.6;"> (ред.)</span>' : '';
+                    const time = new Date(updatedMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const forwardedLabel = updatedMsg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(updatedMsg.forwarded_from)}</div>` : '';
+                    let replyHtml = '';
+                    if (updatedMsg.reply_to && updatedMsg.reply_to_data) {
+                        replyHtml = `<div class="reply-quote"><strong>${escapeHtml(updatedMsg.reply_to_data.username)}</strong>${escapeHtml(updatedMsg.reply_to_data.content.slice(0, 80))}</div>`;
+                    }
+                    const sender = updatedMsg.user_id !== currentUser.id && currentChatType === 'group' ? `<div class="message-sender">${escapeHtml(updatedMsg.username)}</div>` : '';
+                    msgDiv.innerHTML = `${forwardedLabel}${replyHtml}${sender}${content}${editedMark}<div class="message-footer"><span class="message-time">${time}</span></div>`;
+                }
+            }
         });
-        
-        const data = await res.json();
-        
-        if (!res.ok) {
-            alert(data.error || 'Ошибка создания группы');
-        } else {
-            groupModal.style.display = 'none';
-            document.getElementById('groupName').value = '';
-            document.getElementById('groupMembers').value = '';
-            await loadChats();
-        }
-    } catch (err) {
-        alert('Ошибка соединения');
-    } finally {
-        isCreatingGroup = false;
-        confirmGroupBtn.textContent = 'Создать';
-        confirmGroupBtn.disabled = false;
-    }
-};
+        // Обработка удаления сообщения
+        socket.on('message deleted', ({ messageId }) => {
+            const row = document.querySelector(`.message-row[data-msg-id="${messageId}"]`);
+            if (row) row.remove();
+        });
+        socket.on('reaction updated', ({ messageId, userId, emoji, removed }) => updateReactionInDOM(messageId, userId, emoji, removed));
+        await loadChats();
+    })();
+    document.getElementById('userInfoBar').onclick = (e) => { if (e.target === themeToggle || e.target === logoutBtn) return; avatarInput.click(); };
+    avatarInput.onchange = async (e) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('avatar', file); const res = await fetch('/api/upload/avatar', { method: 'POST', body: formData }); const data = await res.json(); if (data.avatarUrl) { currentUser.avatar = data.avatarUrl; myAvatarEl.innerHTML = `<img src="${data.avatarUrl}">`; } avatarInput.value = ''; };
+    logoutBtn.onclick = async () => { await fetch('/api/logout', { method: 'POST' }); window.location.href = '/login'; };
 </script>
 </body>
 </html>

@@ -1,0 +1,10 @@
+[33m67f8d94[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m 1.1
+[33me0091cb[m separate login and register pages
+[33m8dc90c6[m dark theme and mobile
+[33m595c4fa[m fix proxy and sql quotes
+[33mce6ef13[m add missing packages
+[33mca4ffa6[m switch to better-sqlite3
+[33m1337ef7[m remove node_modules
+[33me453830[m Первый коммит: мессенджер работает
+[33mc9746ec[m Первый коммит
+[33m8f326e5[m add gitignore

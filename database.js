@@ -62,6 +62,9 @@ db.exec(`
         content TEXT,
         image_url TEXT,
         forwarded_from TEXT,
+        reply_to INTEGER,
+        edited INTEGER DEFAULT 0,
+        edited_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -86,7 +89,27 @@ try {
     console.log('✅ Добавлена колонка reply_to');
 } catch (err) {
     if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка при добавлении колонки:', err.message);
+        console.log('⚠️ Ошибка при добавлении колонки reply_to:', err.message);
+    }
+}
+
+// Добавляем колонку edited, если её нет
+try {
+    db.exec('ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0');
+    console.log('✅ Добавлена колонка edited');
+} catch (err) {
+    if (!err.message.includes('duplicate column')) {
+        console.log('⚠️ Ошибка при добавлении колонки edited:', err.message);
+    }
+}
+
+// Добавляем колонку edited_at, если её нет
+try {
+    db.exec('ALTER TABLE messages ADD COLUMN edited_at DATETIME');
+    console.log('✅ Добавлена колонка edited_at');
+} catch (err) {
+    if (!err.message.includes('duplicate column')) {
+        console.log('⚠️ Ошибка при добавлении колонки edited_at:', err.message);
     }
 }
 

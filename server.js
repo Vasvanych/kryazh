@@ -296,7 +296,52 @@ app.post('/api/upload/avatar', requireAuth, uploadAvatar.single('avatar'), (req,
     db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatarUrl, req.session.userId);
     res.json({ avatarUrl });
 });
+// Редактировать сообщение
+app.put('/api/messages/:messageId', requireAuth, (req, res) => {
+    const messageId = req.params.messageId;
+    const userId = req.session.userId;
+    const { content } = req.body;
 
+    if (!content || content.trim().length === 0) {
+        return res.status(400).json({ error: 'Сообщение не может быть пустым' });
+    }
+
+    const message = db.prepare('SELECT * FROM messages WHERE id = ? AND user_id = ?').get(messageId, userId);
+    if (!message) {
+        return res.status(403).json({ error: 'Нет прав на редактирование' });
+    }
+
+    db.prepare('UPDATE messages SET content = ?, edited = 1, edited_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(content.trim(), messageId);
+
+    const updated = db.prepare(`
+        SELECT m.*, u.username, u.avatar 
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.id = ?
+    `).get(messageId);
+
+    io.to(`chat_${message.chat_id}`).emit('message edited', updated);
+    res.json(updated);
+});
+
+// Удалить сообщение
+app.delete('/api/messages/:messageId', requireAuth, (req, res) => {
+    const messageId = req.params.messageId;
+    const userId = req.session.userId;
+
+    const message = db.prepare('SELECT * FROM messages WHERE id = ? AND user_id = ?').get(messageId, userId);
+    if (!message) {
+        return res.status(403).json({ error: 'Нет прав на удаление' });
+    }
+
+    db.prepare('DELETE FROM message_reactions WHERE message_id = ?').run(messageId);
+    db.prepare('DELETE FROM message_reads WHERE message_id = ?').run(messageId);
+    db.prepare('DELETE FROM messages WHERE id = ?').run(messageId);
+
+    io.to(`chat_${message.chat_id}`).emit('message deleted', { messageId, chatId: message.chat_id });
+    res.json({ ok: true });
+});
 // Онлайн пользователи
 app.get('/api/online-users', requireAuth, (req, res) => {
     res.json([...onlineUsers.keys()]);
