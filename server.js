@@ -381,6 +381,43 @@ app.get('/api/debug/avatars', requireAuth, (req, res) => {
         res.json({ error: err.message });
     }
 });
+// ВРЕМЕННО: перенести аватарки из /app/uploads в /data/uploads
+app.get('/api/admin/migrate-avatars', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    
+    const oldPath = '/app/uploads/avatars';
+    const newPath = '/data/uploads/avatars';
+    
+    // Создаём новую папку, если её нет
+    if (!fs.existsSync(newPath)) {
+        fs.mkdirSync(newPath, { recursive: true });
+    }
+    
+    // Проверяем, есть ли файлы в старой папке
+    if (fs.existsSync(oldPath)) {
+        const files = fs.readdirSync(oldPath);
+        let moved = 0;
+        
+        files.forEach(file => {
+            const oldFile = path.join(oldPath, file);
+            const newFile = path.join(newPath, file);
+            fs.renameSync(oldFile, newFile);
+            moved++;
+        });
+        
+        res.json({ 
+            message: 'Перенос завершён', 
+            moved: moved,
+            files: files
+        });
+    } else {
+        res.json({ 
+            message: 'Старая папка не найдена', 
+            oldPath: oldPath 
+        });
+    }
+});
 // Онлайн пользователи
 app.get('/api/online-users', requireAuth, (req, res) => {
     res.json([...onlineUsers.keys()]);
