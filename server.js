@@ -18,10 +18,27 @@ const port = process.env.PORT || 3000;
 
 const onlineUsers = new Map();
 
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-const avatarDir = path.join(__dirname, 'uploads', 'avatars');
-if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir);
+// Определяем режим Railway
+const isRailway = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.RAILWAY_ENVIRONMENT;
+
+// Папки для загрузок
+let uploadDir, avatarDir, voiceDir;
+
+if (isRailway) {
+    uploadDir = '/data/uploads';
+    avatarDir = '/data/uploads/avatars';
+    voiceDir = '/data/uploads/voice';
+    console.log('🚀 Railway режим: загрузки в /data/uploads');
+} else {
+    uploadDir = path.join(__dirname, 'uploads');
+    avatarDir = path.join(__dirname, 'uploads', 'avatars');
+    voiceDir = path.join(__dirname, 'uploads', 'voice');
+    console.log('💻 Локальный режим: загрузки в папке проекта');
+}
+
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
+if (!fs.existsSync(voiceDir)) fs.mkdirSync(voiceDir, { recursive: true });
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
@@ -62,6 +79,21 @@ const uploadAvatar = multer({
     limits: { fileSize: 2 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         ALLOWED_IMAGE_TYPES.includes(file.mimetype) ? cb(null, true) : cb(new Error('Разрешены только изображения'));
+    }
+});
+
+const uploadVoice = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, voiceDir),
+        filename: (req, file, cb) => cb(null, 'voice-' + Date.now() + '.webm')
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'audio/webm' || file.mimetype === 'audio/mp4' || file.mimetype === 'audio/ogg') {
+            cb(null, true);
+        } else {
+            cb(new Error('Разрешены только аудиофайлы'));
+        }
     }
 });
 
@@ -166,25 +198,21 @@ app.get('/api/messages/:chatId', requireAuth, (req, res) => {
         ORDER BY m.created_at ASC
     `).all(chatId);
 
-    // Добавляем реакции к каждому сообщению
     const messages = rows.map(msg => {
-        // Получаем все реакции для этого сообщения
-        const reactionsList = db.prepare(`
-            SELECT user_id, emoji FROM message_reactions WHERE message_id = ?
-        `).all(msg.id);
-        
-        // Группируем реакции по эмодзи
+        const reactionsList = db.prepare(`SELECT user_id, emoji FROM message_reactions WHERE message_id = ?`).all(msg.id);
         const reactions = {};
         reactionsList.forEach(r => {
             if (!reactions[r.emoji]) reactions[r.emoji] = [];
             reactions[r.emoji].push(r.user_id);
         });
         
-        return {
-            ...msg,
-            reactions: reactions,
-            read_count: msg.read_count || 1
-        };
+        let reply_to_data = null;
+        if (msg.reply_to) {
+            const replyMsg = db.prepare(`SELECT m.content, u.username FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?`).get(msg.reply_to);
+            if (replyMsg) reply_to_data = { content: replyMsg.content, username: replyMsg.username };
+        }
+        
+        return { ...msg, reactions, reply_to_data, read_count: msg.read_count || 1 };
     });
 
     res.json(messages);
@@ -195,17 +223,7 @@ app.get('/api/users/search', requireAuth, (req, res) => {
     const query = req.query.q;
     if (!query || query.length < 2) return res.json([]);
     if (query.length > 50) return res.status(400).json({ error: 'Запрос слишком длинный' });
-
-    // Ищем по username (имени пользователя) — частичное совпадение
-    // Также можно добавить поиск по email или телефону, если они будут
-    const rows = db.prepare(`
-        SELECT id, username, avatar 
-        FROM users 
-        WHERE username LIKE ? 
-           OR username LIKE ?
-        LIMIT 20
-    `).all(`%${query}%`, `${query}%`);
-    
+    const rows = db.prepare(`SELECT id, username, avatar FROM users WHERE username LIKE ? LIMIT 20`).all(`%${query}%`);
     res.json(rows || []);
 });
 
@@ -213,7 +231,6 @@ app.get('/api/users/search', requireAuth, (req, res) => {
 app.post('/api/chat/private', requireAuth, (req, res) => {
     const user1 = req.session.userId;
     const user2 = parseInt(req.body.user2);
-
     if (!user2 || user1 === user2) return res.status(400).json({ error: 'Некорректный пользователь' });
 
     const existing = db.prepare(`
@@ -222,10 +239,9 @@ app.post('/api/chat/private', requireAuth, (req, res) => {
         JOIN chat_participants cp2 ON c.id = cp2.chat_id
         WHERE c.type = 'private' AND cp1.user_id = ? AND cp2.user_id = ?
     `).get(user1, user2);
-
     if (existing) return res.json({ chatId: existing.id });
 
-   const chatId = db.prepare("INSERT INTO chats (type) VALUES ('private')").run().lastInsertRowid;
+    const chatId = db.prepare("INSERT INTO chats (type) VALUES ('private')").run().lastInsertRowid;
     db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)').run(chatId, user1, chatId, user2);
     res.json({ chatId });
 });
@@ -234,34 +250,20 @@ app.post('/api/chat/private', requireAuth, (req, res) => {
 app.post('/api/chat/group', requireAuth, (req, res) => {
     const { name, members } = req.body;
     const creatorId = req.session.userId;
-
     if (!name || name.trim().length < 1) return res.status(400).json({ error: 'Введите название группы' });
     if (name.length > 50) return res.status(400).json({ error: 'Название слишком длинное' });
 
-    // Проверяем, не существует ли уже группа с таким названием у этого пользователя
-    const existingGroup = db.prepare(`
-        SELECT c.id FROM chats c
-        JOIN chat_participants cp ON c.id = cp.chat_id
-        WHERE c.type = 'group' AND c.name = ? AND cp.user_id = ?
-    `).get(name.trim(), creatorId);
-
-    if (existingGroup) {
-        return res.status(400).json({ error: 'У вас уже есть группа с таким названием' });
-    }
+    const existingGroup = db.prepare(`SELECT c.id FROM chats c JOIN chat_participants cp ON c.id = cp.chat_id WHERE c.type = 'group' AND c.name = ? AND cp.user_id = ?`).get(name.trim(), creatorId);
+    if (existingGroup) return res.status(400).json({ error: 'У вас уже есть группа с таким названием' });
 
     try {
-        // Создаём группу
         const chatResult = db.prepare("INSERT INTO chats (name, type) VALUES (?, 'group')").run(name.trim());
         const chatId = chatResult.lastInsertRowid;
-        
-        // Добавляем участников
         const allMembers = [creatorId, ...(members || []).filter(m => m !== creatorId && !isNaN(m))];
         const insertMember = db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)');
         allMembers.forEach(m => insertMember.run(chatId, m));
-        
         res.json({ chatId, name });
     } catch (err) {
-        console.error('Ошибка создания группы:', err);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
@@ -270,16 +272,9 @@ app.post('/api/chat/group', requireAuth, (req, res) => {
 app.get('/api/chat/:chatId/participants', requireAuth, (req, res) => {
     const chatId = req.params.chatId;
     const userId = req.session.userId;
-
     const access = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
     if (!access) return res.status(403).json({ error: 'Доступ запрещён' });
-
-    const rows = db.prepare(`
-        SELECT u.id, u.username, u.avatar FROM users u
-        JOIN chat_participants cp ON u.id = cp.user_id
-        WHERE cp.chat_id = ?
-    `).all(chatId);
-
+    const rows = db.prepare(`SELECT u.id, u.username, u.avatar FROM users u JOIN chat_participants cp ON u.id = cp.user_id WHERE cp.chat_id = ?`).all(chatId);
     res.json(rows);
 });
 
@@ -296,31 +291,26 @@ app.post('/api/upload/avatar', requireAuth, uploadAvatar.single('avatar'), (req,
     db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatarUrl, req.session.userId);
     res.json({ avatarUrl });
 });
+
+// Загрузка голосового сообщения
+app.post('/api/upload/voice', requireAuth, uploadVoice.single('audio'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Нет файла' });
+    const voiceUrl = `/uploads/voice/${req.file.filename}`;
+    res.json({ audioUrl: voiceUrl });
+});
+
 // Редактировать сообщение
 app.put('/api/messages/:messageId', requireAuth, (req, res) => {
     const messageId = req.params.messageId;
     const userId = req.session.userId;
     const { content } = req.body;
-
-    if (!content || content.trim().length === 0) {
-        return res.status(400).json({ error: 'Сообщение не может быть пустым' });
-    }
+    if (!content || content.trim().length === 0) return res.status(400).json({ error: 'Сообщение не может быть пустым' });
 
     const message = db.prepare('SELECT * FROM messages WHERE id = ? AND user_id = ?').get(messageId, userId);
-    if (!message) {
-        return res.status(403).json({ error: 'Нет прав на редактирование' });
-    }
+    if (!message) return res.status(403).json({ error: 'Нет прав на редактирование' });
 
-    db.prepare('UPDATE messages SET content = ?, edited = 1, edited_at = CURRENT_TIMESTAMP WHERE id = ?')
-        .run(content.trim(), messageId);
-
-    const updated = db.prepare(`
-        SELECT m.*, u.username, u.avatar 
-        FROM messages m
-        JOIN users u ON m.user_id = u.id
-        WHERE m.id = ?
-    `).get(messageId);
-
+    db.prepare('UPDATE messages SET content = ?, edited = 1, edited_at = CURRENT_TIMESTAMP WHERE id = ?').run(content.trim(), messageId);
+    const updated = db.prepare(`SELECT m.*, u.username, u.avatar FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?`).get(messageId);
     io.to(`chat_${message.chat_id}`).emit('message edited', updated);
     res.json(updated);
 });
@@ -329,16 +319,12 @@ app.put('/api/messages/:messageId', requireAuth, (req, res) => {
 app.delete('/api/messages/:messageId', requireAuth, (req, res) => {
     const messageId = req.params.messageId;
     const userId = req.session.userId;
-
     const message = db.prepare('SELECT * FROM messages WHERE id = ? AND user_id = ?').get(messageId, userId);
-    if (!message) {
-        return res.status(403).json({ error: 'Нет прав на удаление' });
-    }
+    if (!message) return res.status(403).json({ error: 'Нет прав на удаление' });
 
     db.prepare('DELETE FROM message_reactions WHERE message_id = ?').run(messageId);
     db.prepare('DELETE FROM message_reads WHERE message_id = ?').run(messageId);
     db.prepare('DELETE FROM messages WHERE id = ?').run(messageId);
-
     io.to(`chat_${message.chat_id}`).emit('message deleted', { messageId, chatId: message.chat_id });
     res.json({ ok: true });
 });
@@ -350,14 +336,12 @@ app.get('/api/online-users', requireAuth, (req, res) => {
 
 // Ошибки multer
 app.use((err, req, res, next) => {
-    if (err.message && err.message.includes('Разрешены только'))
-        return res.status(400).json({ error: err.message });
-    if (err.code === 'LIMIT_FILE_SIZE')
-        return res.status(400).json({ error: 'Файл слишком большой' });
+    if (err.message && err.message.includes('Разрешены только')) return res.status(400).json({ error: err.message });
+    if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Файл слишком большой' });
     next(err);
 });
 
-// WebSocket
+// ============= WEBSOCKET =============
 io.on('connection', (socket) => {
     let currentUser = null;
 
@@ -376,67 +360,71 @@ io.on('connection', (socket) => {
         socket.to(`chat_${chatId}`).emit('stop typing');
     });
 
-   socket.on('new message', (data) => {
-    const { chatId, text, userId, username, isImage, imageUrl, forwardedFrom, replyTo } = data;
-    if (!chatId || !userId) return;
-    const content = isImage && imageUrl ? imageUrl : text;
-    if (!content) return;
+    socket.on('new message', (data) => {
+        const { chatId, text, userId, username, isImage, imageUrl, isVoice, voiceUrl, forwardedFrom, replyTo } = data;
+        if (!chatId || !userId) return;
+        
+        let content;
+        if (isImage && imageUrl) {
+            content = imageUrl;
+        } else if (isVoice && voiceUrl) {
+            content = voiceUrl;
+        } else {
+            content = text;
+        }
+        
+        if (!content) return;
 
-    try {
-        // Сохраняем сообщение
-        const stmt = db.prepare(`
-            INSERT INTO messages (chat_id, user_id, content, image_url, forwarded_from, reply_to) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-        
-        const result = stmt.run(
-            chatId, 
-            userId, 
-            content, 
-            isImage ? imageUrl : null, 
-            forwardedFrom || null,  // ← здесь имя отправителя для пересылки
-            replyTo ? replyTo.msgId : null
-        );
-        const msgId = result.lastInsertRowid;
-        
-        // Отмечаем, что отправитель прочитал своё сообщение
-        db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(msgId, userId);
-        
-        // Получаем сообщение с данными
-        let newMsg = db.prepare(`
-            SELECT m.*, u.username, u.avatar,
-                (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
-            FROM messages m
-            JOIN users u ON m.user_id = u.id
-            WHERE m.id = ?
-        `).get(msgId);
-        
-        // Добавляем данные об ответе (если есть)
-        if (newMsg.reply_to) {
-            const replyMsg = db.prepare(`
-                SELECT m.content, u.username 
+        try {
+            const stmt = db.prepare(`
+                INSERT INTO messages (chat_id, user_id, content, image_url, voice_url, forwarded_from, reply_to) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `);
+            
+            const result = stmt.run(
+                chatId, userId, content, 
+                isImage ? imageUrl : null, 
+                isVoice ? voiceUrl : null, 
+                forwardedFrom || null, 
+                replyTo ? replyTo.msgId : null
+            );
+            const msgId = result.lastInsertRowid;
+            
+            db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(msgId, userId);
+            
+            let newMsg = db.prepare(`
+                SELECT m.*, u.username, u.avatar,
+                    (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
                 FROM messages m
                 JOIN users u ON m.user_id = u.id
                 WHERE m.id = ?
-            `).get(newMsg.reply_to);
-            if (replyMsg) {
-                newMsg.reply_to_data = {
-                    content: replyMsg.content,
-                    username: replyMsg.username
-                };
+            `).get(msgId);
+            
+            if (newMsg.reply_to) {
+                const replyMsg = db.prepare(`
+                    SELECT m.content, u.username 
+                    FROM messages m
+                    JOIN users u ON m.user_id = u.id
+                    WHERE m.id = ?
+                `).get(newMsg.reply_to);
+                if (replyMsg) {
+                    newMsg.reply_to_data = {
+                        content: replyMsg.content,
+                        username: replyMsg.username
+                    };
+                }
             }
+            
+            if (newMsg.voice_url) {
+                newMsg.isVoice = true;
+                newMsg.voiceUrl = newMsg.voice_url;
+            }
+            
+            io.to(`chat_${chatId}`).emit('new message', newMsg);
+        } catch (err) {
+            console.error('Ошибка сохранения сообщения:', err);
         }
-        
-        // Убедимся, что forwarded_from сохранился
-        if (newMsg.forwarded_from) {
-            console.log('📨 Сообщение переслано от:', newMsg.forwarded_from);
-        }
-        
-        io.to(`chat_${chatId}`).emit('new message', newMsg);
-    } catch (err) {
-        console.error('Ошибка сохранения сообщения:', err);
-    }
-});
+    });
 
     socket.on('read messages', ({ chatId, userId }) => {
         try {
@@ -452,81 +440,24 @@ io.on('connection', (socket) => {
 
     socket.on('react', ({ messageId, userId, emoji, chatId }) => {
         try {
-            const existing = db.prepare('SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ?').get(messageId, userId);
-            if (existing && existing.emoji === emoji) {
-                db.prepare('DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?').run(messageId, userId);
+            const existing = db.prepare(`SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?`).get(messageId, userId, emoji);
+            if (existing) {
+                db.prepare(`DELETE FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?`).run(messageId, userId, emoji);
                 io.to(`chat_${chatId}`).emit('reaction updated', { messageId, userId, emoji, removed: true });
             } else {
-                db.prepare('INSERT OR REPLACE INTO message_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)').run(messageId, userId, emoji);
+                const otherReaction = db.prepare(`SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ?`).get(messageId, userId);
+                if (otherReaction) {
+                    db.prepare(`DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?`).run(messageId, userId);
+                    io.to(`chat_${chatId}`).emit('reaction updated', { messageId, userId, emoji: otherReaction.emoji, removed: true });
+                }
+                db.prepare(`INSERT INTO message_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)`).run(messageId, userId, emoji);
                 io.to(`chat_${chatId}`).emit('reaction updated', { messageId, userId, emoji, removed: false });
             }
         } catch (err) {
             console.error('Ошибка реакции:', err);
         }
     });
-    // Обработка реакций
-    socket.on('react', ({ messageId, userId, emoji, chatId }) => {
-        try {
-            // Проверяем, есть ли уже такая реакция от этого пользователя
-            const existing = db.prepare(`
-                SELECT * FROM message_reactions 
-                WHERE message_id = ? AND user_id = ?
-            `).get(messageId, userId);
-            
-            if (existing && existing.emoji === emoji) {
-                // Удаляем реакцию (если нажали на тот же смайлик)
-                db.prepare(`
-                    DELETE FROM message_reactions 
-                    WHERE message_id = ? AND user_id = ?
-                `).run(messageId, userId);
-                
-                socket.to(`chat_${chatId}`).emit('reaction updated', {
-                    messageId,
-                    userId,
-                    emoji,
-                    removed: true
-                });
-            } else if (existing) {
-                // Заменяем реакцию на другой смайлик
-                db.prepare(`
-                    UPDATE message_reactions 
-                    SET emoji = ? 
-                    WHERE message_id = ? AND user_id = ?
-                `).run(emoji, messageId, userId);
-                
-                socket.to(`chat_${chatId}`).emit('reaction updated', {
-                    messageId,
-                    userId,
-                    emoji,
-                    removed: false
-                });
-            } else {
-                // Добавляем новую реакцию
-                db.prepare(`
-                    INSERT INTO message_reactions (message_id, user_id, emoji) 
-                    VALUES (?, ?, ?)
-                `).run(messageId, userId, emoji);
-                
-                socket.to(`chat_${chatId}`).emit('reaction updated', {
-                    messageId,
-                    userId,
-                    emoji,
-                    removed: false
-                });
-            }
-            
-            // Отправляем обновление самому отправителю
-            socket.emit('reaction updated', {
-                messageId,
-                userId,
-                emoji,
-                removed: existing && existing.emoji === emoji
-            });
-            
-        } catch (err) {
-            console.error('Ошибка при обработке реакции:', err);
-        }
-    });
+
     socket.on('disconnect', () => {
         if (currentUser) {
             onlineUsers.delete(currentUser);

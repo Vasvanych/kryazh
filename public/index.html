@@ -165,6 +165,7 @@
         .message-time { font-size: 10px; opacity: 0.7; }
         .message-ticks.read { color: #4fc3f7; }
         .message img { max-width: 200px; max-height: 200px; border-radius: 10px; cursor: pointer; }
+        .message audio { max-width: 200px; height: 36px; border-radius: 20px; }
         .reply-quote {
             background: rgba(0,0,0,0.1);
             border-left: 3px solid var(--primary);
@@ -198,6 +199,15 @@
         .message-wrap:hover .message-actions { display: flex; }
         .action-btn { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-size: 14px; }
         .action-btn:hover { background: var(--hover); }
+        .voice-recording {
+            background: #ff4444 !important;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
         .typing-indicator {
             padding: 0 20px 8px; font-size: 12px; color: var(--text-faint);
             font-style: italic; min-height: 24px;
@@ -280,6 +290,7 @@
         </div>
         <div class="input-area" id="inputArea" style="display:none;">
             <input type="text" id="messageInput" placeholder="✏️ Напишите сообщение...">
+            <button id="voiceBtn" title="Голосовое сообщение">🎤</button>
             <button id="imageBtn" title="Фото">📷</button>
             <button id="sendButton" title="Отправить">➤</button>
         </div>
@@ -309,6 +320,7 @@
     let currentUser = null, currentChat = null, currentChatType = null, currentChatPartnerId = null;
     let socket = null, allChats = [], onlineUsers = new Set(), typingTimeout = null;
     let forwardingMessage = null, replyingTo = null, emojiTargetMsgId = null, emojiTargetChatId = null;
+    let mediaRecorder = null, audioChunks = [], isRecording = false;
     const mainContainer = document.getElementById('mainContainer');
     const currentUsernameSpan = document.getElementById('currentUsername');
     const searchInput = document.getElementById('searchInput');
@@ -318,6 +330,7 @@
     const inputArea = document.getElementById('inputArea');
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
+    const voiceBtn = document.getElementById('voiceBtn');
     const imageBtn = document.getElementById('imageBtn');
     const imageInput = document.getElementById('imageInput');
     const avatarInput = document.getElementById('avatarInput');
@@ -372,7 +385,7 @@
             }
             const isOnline = partnerId !== null && onlineUsers.has(partnerId);
             const time = chat.last_message_time ? new Date(chat.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-            const preview = chat.last_message ? (chat.last_message.includes('/uploads/') ? '📷 Фото' : chat.last_message.slice(0, 30)) : 'Новый чат';
+            const preview = chat.last_message ? (chat.last_message.includes('/uploads/') ? (chat.last_message.includes('/voice/') ? '🎤 Голосовое' : '📷 Фото') : chat.last_message.slice(0, 30)) : 'Новый чат';
             const unread = chat.unread_count || 0;
             return { chat, displayName, partnerId, partnerAvatar, isOnline, time, preview, unread };
         }));
@@ -412,15 +425,21 @@
         row.dataset.msgId = msg.id;
         const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         let content = '';
-        if (msg.content && (msg.content.includes('/uploads/') || msg.image_url)) { const url = msg.image_url || msg.content; content = `<img src="${url}" onclick="window.open('${url}')">`; }
-        else content = escapeHtml(msg.content || '');
+        if (msg.isVoice || (msg.content && msg.content.includes('/uploads/voice/'))) {
+            const voiceUrl = msg.voiceUrl || msg.content;
+            content = `<audio controls><source src="${voiceUrl}" type="audio/webm"></audio>`;
+        } else if (msg.content && (msg.content.includes('/uploads/') || msg.image_url)) {
+            const url = msg.image_url || msg.content;
+            content = `<img src="${url}" onclick="window.open('${url}')">`;
+        } else {
+            content = escapeHtml(msg.content || '');
+        }
         let replyHtml = '';
         if (msg.reply_to && msg.reply_to_data) replyHtml = `<div class="reply-quote"><strong>${escapeHtml(msg.reply_to_data.username)}</strong>${escapeHtml(msg.reply_to_data.content.slice(0, 80))}</div>`;
         const forwardedLabel = msg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(msg.forwarded_from)}</div>` : '';
         const sender = (!isSent && currentChatType === 'group') ? `<div class="message-sender">${escapeHtml(msg.username)}</div>` : '';
         const isRead = msg.read_count && msg.read_count > 1;
         const ticks = isSent ? `<span class="message-ticks ${isRead ? 'read' : ''}">✓✓</span>` : '';
-        // Пометка "ред." если сообщение редактировалось
         const editedMark = msg.edited ? '<span style="font-size:10px; opacity:0.6; margin-left:6px;">(ред.)</span>' : '';
         const reactionsHtml = Object.entries(msg.reactions || {}).map(([emoji, users]) => `<button class="reaction-btn ${users.includes(currentUser.id) ? 'mine' : ''}" onclick="toggleReaction(${msg.id},'${emoji}')">${emoji}<span class="reaction-count">${users.length}</span></button>`).join('');
         let avEl = !isSent ? (msg.avatar ? `<div class="avatar-sm"><img src="${msg.avatar}"></div>` : `<div class="avatar-sm">${(msg.username||'?')[0].toUpperCase()}</div>`) : '';
@@ -428,23 +447,8 @@
         messagesDiv.appendChild(row);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
-    // Редактирование сообщения
-    function editMessage(messageId, oldContent) {
-        const newContent = prompt('Редактировать сообщение:', oldContent);
-        if (!newContent || newContent.trim() === oldContent) return;
-        fetch(`/api/messages/${messageId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: newContent.trim() })
-        }).catch(err => console.error('Ошибка:', err));
-    }
-    // Удаление сообщения
-    function deleteMessage(messageId) {
-        if (!confirm('Удалить сообщение?')) return;
-        fetch(`/api/messages/${messageId}`, {
-            method: 'DELETE'
-        }).catch(err => console.error('Ошибка:', err));
-    }
+    function editMessage(messageId, oldContent) { const newContent = prompt('Редактировать сообщение:', oldContent); if (!newContent || newContent.trim() === oldContent) return; fetch(`/api/messages/${messageId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newContent.trim() }) }).catch(err => console.error(err)); }
+    function deleteMessage(messageId) { if (!confirm('Удалить сообщение?')) return; fetch(`/api/messages/${messageId}`, { method: 'DELETE' }).catch(err => console.error(err)); }
     function toggleReaction(msgId, emoji) { if (!currentChat) return; socket.emit('react', { messageId: msgId, userId: currentUser.id, emoji, chatId: currentChat.id }); }
     function openEmojiPicker(e, msgId, chatId) { e.stopPropagation(); emojiTargetMsgId = msgId; emojiTargetChatId = chatId; const rect = e.target.getBoundingClientRect(); emojiPicker.style.top = (rect.top - 60) + 'px'; emojiPicker.style.left = rect.left + 'px'; emojiPicker.classList.toggle('visible'); }
     function updateReactionInDOM(messageId, userId, emoji, removed) {
@@ -463,6 +467,41 @@
     messageInput.oninput = () => { if (!currentChat) return; socket.emit('typing', { chatId: currentChat.id, username: currentUser.username }); clearTimeout(typingTimeout); typingTimeout = setTimeout(() => socket.emit('stop typing', { chatId: currentChat.id }), 2000); };
     imageBtn.onclick = () => imageInput.click();
     imageInput.onchange = async (e) => { const file = e.target.files[0]; if (!file || !currentChat) return; const formData = new FormData(); formData.append('image', file); const res = await fetch('/api/upload', { method: 'POST', body: formData }); const data = await res.json(); socket.emit('new message', { chatId: currentChat.id, text: data.imageUrl, userId: currentUser.id, username: currentUser.username, isImage: true, imageUrl: data.imageUrl }); imageInput.value = ''; };
+    if (voiceBtn) {
+        voiceBtn.onclick = async () => {
+            if (isRecording) {
+                if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+                isRecording = false;
+                voiceBtn.classList.remove('voice-recording');
+                voiceBtn.textContent = '🎤';
+            } else {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunks.push(event.data); };
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob, 'voice-' + Date.now() + '.webm');
+                        try {
+                            const res = await fetch('/api/upload/voice', { method: 'POST', body: formData });
+                            const data = await res.json();
+                            if (data.audioUrl && currentChat) {
+                                socket.emit('new message', { chatId: currentChat.id, text: data.audioUrl, userId: currentUser.id, username: currentUser.username, isVoice: true, voiceUrl: data.audioUrl });
+                            }
+                        } catch (err) { console.error(err); alert('Ошибка отправки голоса'); }
+                        stream.getTracks().forEach(track => track.stop());
+                        audioChunks = [];
+                    };
+                    mediaRecorder.start();
+                    isRecording = true;
+                    voiceBtn.classList.add('voice-recording');
+                    voiceBtn.textContent = '⏹️';
+                } catch (err) { console.error(err); alert('Не удалось получить доступ к микрофону'); }
+            }
+        };
+    }
     createGroupBtn.onclick = () => { if (groupModal.style.display === 'flex') return; groupModal.style.display = 'flex'; };
     closeModalBtn.onclick = () => { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; };
     let isCreatingGroup = false;
@@ -474,7 +513,7 @@
         if (!res.ok) { window.location.href = '/login'; return; }
         currentUser = await res.json();
         currentUsernameSpan.textContent = currentUser.username;
-        myAvatarEl.innerHTML = currentUser.avatar ? `<img src="${currentUser.avatar}">` : currentUser.username[0].toUpperCase();
+        myAvatarEl.innerHTML = currentUser.avatar ? `<img src="${currentUser.avatar}" width="40" height="40" style="border-radius:50%;object-fit:cover;">` : currentUser.username[0].toUpperCase();
         mainContainer.style.display = 'flex';
         socket = io();
         socket.emit('auth', currentUser.id);
@@ -485,40 +524,13 @@
         socket.on('typing', ({ username }) => { typingIndicator.innerHTML = `${escapeHtml(username)} печатает...`; });
         socket.on('stop typing', () => { typingIndicator.innerHTML = ''; });
         socket.on('new message', (msg) => { if (currentChat && msg.chat_id === currentChat.id) { addMessageToChat(msg, msg.user_id === currentUser.id); typingIndicator.innerHTML = ''; socket.emit('read messages', { chatId: currentChat.id, userId: currentUser.id }); } loadChats(); });
-        // Обработка редактирования сообщения
-        socket.on('message edited', (updatedMsg) => {
-            const row = document.querySelector(`.message-row[data-msg-id="${updatedMsg.id}"]`);
-            if (row) {
-                const msgDiv = row.querySelector('.message');
-                if (msgDiv) {
-                    let content = updatedMsg.content;
-                    if (content.includes('/uploads/')) {
-                        content = `<img src="${content}" onclick="window.open('${content}')">`;
-                    } else {
-                        content = escapeHtml(content);
-                    }
-                    const editedMark = updatedMsg.edited ? '<span style="font-size:10px; opacity:0.6;"> (ред.)</span>' : '';
-                    const time = new Date(updatedMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    const forwardedLabel = updatedMsg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(updatedMsg.forwarded_from)}</div>` : '';
-                    let replyHtml = '';
-                    if (updatedMsg.reply_to && updatedMsg.reply_to_data) {
-                        replyHtml = `<div class="reply-quote"><strong>${escapeHtml(updatedMsg.reply_to_data.username)}</strong>${escapeHtml(updatedMsg.reply_to_data.content.slice(0, 80))}</div>`;
-                    }
-                    const sender = updatedMsg.user_id !== currentUser.id && currentChatType === 'group' ? `<div class="message-sender">${escapeHtml(updatedMsg.username)}</div>` : '';
-                    msgDiv.innerHTML = `${forwardedLabel}${replyHtml}${sender}${content}${editedMark}<div class="message-footer"><span class="message-time">${time}</span></div>`;
-                }
-            }
-        });
-        // Обработка удаления сообщения
-        socket.on('message deleted', ({ messageId }) => {
-            const row = document.querySelector(`.message-row[data-msg-id="${messageId}"]`);
-            if (row) row.remove();
-        });
+        socket.on('message edited', (updatedMsg) => { const row = document.querySelector(`.message-row[data-msg-id="${updatedMsg.id}"]`); if (row) { const msgDiv = row.querySelector('.message'); if (msgDiv) { let content = updatedMsg.content; if (content.includes('/uploads/voice/')) content = `<audio controls><source src="${content}" type="audio/webm"></audio>`; else if (content.includes('/uploads/')) content = `<img src="${content}" onclick="window.open('${content}')">`; else content = escapeHtml(content); const editedMark = updatedMsg.edited ? '<span style="font-size:10px; opacity:0.6;"> (ред.)</span>' : ''; const time = new Date(updatedMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); const forwardedLabel = updatedMsg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(updatedMsg.forwarded_from)}</div>` : ''; let replyHtml = ''; if (updatedMsg.reply_to && updatedMsg.reply_to_data) replyHtml = `<div class="reply-quote"><strong>${escapeHtml(updatedMsg.reply_to_data.username)}</strong>${escapeHtml(updatedMsg.reply_to_data.content.slice(0, 80))}</div>`; const sender = updatedMsg.user_id !== currentUser.id && currentChatType === 'group' ? `<div class="message-sender">${escapeHtml(updatedMsg.username)}</div>` : ''; msgDiv.innerHTML = `${forwardedLabel}${replyHtml}${sender}${content}${editedMark}<div class="message-footer"><span class="message-time">${time}</span></div>`; } } });
+        socket.on('message deleted', ({ messageId }) => { const row = document.querySelector(`.message-row[data-msg-id="${messageId}"]`); if (row) row.remove(); });
         socket.on('reaction updated', ({ messageId, userId, emoji, removed }) => updateReactionInDOM(messageId, userId, emoji, removed));
         await loadChats();
     })();
     document.getElementById('userInfoBar').onclick = (e) => { if (e.target === themeToggle || e.target === logoutBtn) return; avatarInput.click(); };
-    avatarInput.onchange = async (e) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('avatar', file); const res = await fetch('/api/upload/avatar', { method: 'POST', body: formData }); const data = await res.json(); if (data.avatarUrl) { currentUser.avatar = data.avatarUrl; myAvatarEl.innerHTML = `<img src="${data.avatarUrl}">`; } avatarInput.value = ''; };
+    avatarInput.onchange = async (e) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('avatar', file); const res = await fetch('/api/upload/avatar', { method: 'POST', body: formData }); const data = await res.json(); if (data.avatarUrl) { currentUser.avatar = data.avatarUrl; myAvatarEl.innerHTML = `<img src="${data.avatarUrl}" width="40" height="40" style="border-radius:50%;object-fit:cover;">`; } avatarInput.value = ''; };
     logoutBtn.onclick = async () => { await fetch('/api/logout', { method: 'POST' }); window.location.href = '/login'; };
 </script>
 </body>

@@ -61,6 +61,7 @@ db.exec(`
         user_id INTEGER NOT NULL,
         content TEXT,
         image_url TEXT,
+        voice_url TEXT,
         forwarded_from TEXT,
         reply_to INTEGER,
         edited INTEGER DEFAULT 0,
@@ -83,33 +84,40 @@ db.exec(`
     );
 `);
 
-// Добавляем колонку reply_to, если её нет
+// Добавляем колонки, если их нет
 try {
     db.exec('ALTER TABLE messages ADD COLUMN reply_to INTEGER');
     console.log('✅ Добавлена колонка reply_to');
 } catch (err) {
     if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка при добавлении колонки reply_to:', err.message);
+        console.log('⚠️ Ошибка reply_to:', err.message);
     }
 }
 
-// Добавляем колонку edited, если её нет
 try {
     db.exec('ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0');
     console.log('✅ Добавлена колонка edited');
 } catch (err) {
     if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка при добавлении колонки edited:', err.message);
+        console.log('⚠️ Ошибка edited:', err.message);
     }
 }
 
-// Добавляем колонку edited_at, если её нет
 try {
     db.exec('ALTER TABLE messages ADD COLUMN edited_at DATETIME');
     console.log('✅ Добавлена колонка edited_at');
 } catch (err) {
     if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка при добавлении колонки edited_at:', err.message);
+        console.log('⚠️ Ошибка edited_at:', err.message);
+    }
+}
+
+try {
+    db.exec('ALTER TABLE messages ADD COLUMN voice_url TEXT');
+    console.log('✅ Добавлена колонка voice_url');
+} catch (err) {
+    if (!err.message.includes('duplicate column')) {
+        console.log('⚠️ Ошибка voice_url:', err.message);
     }
 }
 
