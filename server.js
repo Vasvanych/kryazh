@@ -418,6 +418,18 @@ app.get('/api/admin/migrate-avatars', (req, res) => {
         });
     }
 });
+// ВРЕМЕННО: очистить битые ссылки на аватарки
+app.get('/api/admin/clean-avatars', (req, res) => {
+    const before = db.prepare('SELECT COUNT(*) as count FROM users WHERE avatar IS NOT NULL').get();
+    db.prepare('UPDATE users SET avatar = NULL').run();
+    const after = db.prepare('SELECT COUNT(*) as count FROM users WHERE avatar IS NOT NULL').get();
+    
+    res.json({ 
+        message: 'Битые ссылки на аватарки удалены',
+        before: before.count,
+        after: after.count
+    });
+});
 // Онлайн пользователи
 app.get('/api/online-users', requireAuth, (req, res) => {
     res.json([...onlineUsers.keys()]);
