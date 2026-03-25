@@ -342,6 +342,45 @@ app.delete('/api/messages/:messageId', requireAuth, (req, res) => {
     io.to(`chat_${message.chat_id}`).emit('message deleted', { messageId, chatId: message.chat_id });
     res.json({ ok: true });
 });
+// ВРЕМЕННО: посмотреть состояние аватарок (удали потом)
+app.get('/api/debug/avatars', requireAuth, (req, res) => {
+    try {
+        // Получаем пользователей с аватарками
+        const users = db.prepare('SELECT id, username, avatar FROM users WHERE avatar IS NOT NULL LIMIT 5').all();
+        
+        // Проверяем, существует ли папка uploads
+        const fs = require('fs');
+        const path = require('path');
+        
+        let uploadsPath = '';
+        let filesList = [];
+        
+        // Пробуем разные варианты папок
+        const possiblePaths = [
+            '/data/uploads/avatars',
+            path.join(__dirname, 'uploads', 'avatars'),
+            '/app/uploads/avatars'
+        ];
+        
+        for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+                uploadsPath = p;
+                filesList = fs.readdirSync(p).slice(0, 5);
+                break;
+            }
+        }
+        
+        res.json({
+            users: users,
+            uploadsFolder: uploadsPath,
+            filesInFolder: filesList,
+            currentDir: __dirname,
+            railwayVolume: process.env.RAILWAY_VOLUME_MOUNT_PATH || null
+        });
+    } catch (err) {
+        res.json({ error: err.message });
+    }
+});
 // Онлайн пользователи
 app.get('/api/online-users', requireAuth, (req, res) => {
     res.json([...onlineUsers.keys()]);
