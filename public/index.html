@@ -139,6 +139,7 @@
             padding: 12px 20px; background: var(--surface);
             border-bottom: 1px solid var(--border);
             display: flex; align-items: center; gap: 12px;
+            flex-wrap: wrap;
         }
         .back-btn {
             display: none; background: none; border: none; cursor: pointer;
@@ -148,6 +149,14 @@
         .chat-header-name { font-weight: bold; font-size: 16px; color: var(--text); }
         .chat-header-status { font-size: 12px; color: var(--text-faint); }
         .chat-header-status.online { color: var(--online); }
+        .call-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            margin-left: 10px;
+            color: var(--primary);
+        }
         .messages {
             flex: 1; padding: 20px; overflow-y: auto;
             display: flex; flex-direction: column; gap: 8px;
@@ -305,6 +314,17 @@
         <button id="closeModalBtn" class="cancel-btn">Отмена</button>
     </div>
 </div>
+<div id="participantsModal" class="modal">
+    <div class="modal-content" style="width: 320px;">
+        <h3>Участники группы</h3>
+        <div id="participantsList" style="max-height: 300px; overflow-y: auto; margin: 10px 0;"></div>
+        <div id="addParticipantArea" style="display: none; margin-top: 10px;">
+            <input type="text" id="newParticipantName" placeholder="Имя пользователя" style="width: 100%; padding: 8px; border-radius: 10px; border: 1px solid var(--border);">
+            <button id="addParticipantBtn" style="margin-top: 8px; width: 100%;">➕ Добавить</button>
+        </div>
+        <button id="closeParticipantsBtn" class="cancel-btn" style="margin-top: 10px;">Закрыть</button>
+    </div>
+</div>
 <div class="emoji-picker" id="emojiPicker">
     <span class="emoji-opt">👍</span><span class="emoji-opt">❤️</span><span class="emoji-opt">😂</span>
     <span class="emoji-opt">😮</span><span class="emoji-opt">😢</span><span class="emoji-opt">🔥</span>
@@ -350,6 +370,12 @@
     const backBtn = document.getElementById('backBtn');
     const themeToggle = document.getElementById('themeToggle');
     const logoutBtn = document.getElementById('logoutBtn');
+    const participantsModal = document.getElementById('participantsModal');
+    const participantsList = document.getElementById('participantsList');
+    const closeParticipantsBtn = document.getElementById('closeParticipantsBtn');
+    const addParticipantArea = document.getElementById('addParticipantArea');
+    const newParticipantName = document.getElementById('newParticipantName');
+    const addParticipantBtn = document.getElementById('addParticipantBtn');
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
@@ -391,25 +417,68 @@
         }));
         chatsList.innerHTML = chatItems.map(({ chat, displayName, partnerId, partnerAvatar, isOnline, time, preview, unread }) => {
             let avEl = chat.type === 'group' ? '<div class="avatar">👥</div>' : (partnerAvatar ? `<div class="avatar"><img src="${partnerAvatar}">${isOnline ? '<div class="online-dot"></div>' : ''}</div>` : `<div class="avatar">${(displayName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`);
-            return `<div class="chat-item ${activeChatId === chat.id ? 'active' : ''}" data-chat-id="${chat.id}" data-chat-type="${chat.type}" data-chat-name="${escapeHtml(displayName)}" data-partner-id="${partnerId||''}" data-partner-avatar="${partnerAvatar||''}">${avEl}<div class="chat-item-info"><div class="chat-item-top"><div class="chat-name">${escapeHtml(displayName)}</div><div class="chat-time">${time}</div></div><div class="chat-item-bottom"><div class="chat-preview">${escapeHtml(preview)}</div>${unread > 0 ? `<div class="unread-badge">${unread}</div>` : ''}</div></div></div>`;
+            return `<div class="chat-item ${activeChatId === chat.id ? 'active' : ''}" data-chat-id="${chat.id}" data-chat-type="${chat.type}" data-chat-name="${escapeHtml(displayName)}" data-chat-creator="${chat.creator_id || ''}" data-partner-id="${partnerId||''}" data-partner-avatar="${partnerAvatar||''}">${avEl}<div class="chat-item-info"><div class="chat-item-top"><div class="chat-name">${escapeHtml(displayName)}</div><div class="chat-time">${time}</div></div><div class="chat-item-bottom"><div class="chat-preview">${escapeHtml(preview)}</div>${unread > 0 ? `<div class="unread-badge">${unread}</div>` : ''}</div></div></div>`;
         }).join('');
-        document.querySelectorAll('.chat-item').forEach(el => { el.onclick = () => { document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active')); el.classList.add('active'); loadChat(parseInt(el.dataset.chatId), el.dataset.chatType, el.dataset.chatName, el.dataset.partnerId ? parseInt(el.dataset.partnerId) : null, el.dataset.partnerAvatar || null); }; });
+        document.querySelectorAll('.chat-item').forEach(el => { el.onclick = () => { document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active')); el.classList.add('active'); loadChat(parseInt(el.dataset.chatId), el.dataset.chatType, el.dataset.chatName, el.dataset.partnerId ? parseInt(el.dataset.partnerId) : null, el.dataset.partnerAvatar || null, parseInt(el.dataset.chatCreator) || null); }; });
     }
-    async function loadChat(chatId, chatType, chatName, partnerId, partnerAvatar) {
+    async function loadChat(chatId, chatType, chatName, partnerId, partnerAvatar, creatorId) {
         const res = await fetch(`/api/messages/${chatId}`);
         if (!res.ok) return;
         const messages = await res.json();
-        currentChat = { id: chatId };
+        currentChat = { id: chatId, creatorId: creatorId };
         currentChatType = chatType;
         currentChatPartnerId = partnerId;
         const isOnline = partnerId !== null && onlineUsers.has(partnerId);
-        chatHeader.innerHTML = `<button class="back-btn" id="backBtn">←</button>${chatType === 'group' ? '<div class="avatar">👥</div>' : (partnerAvatar ? `<div class="avatar"><img src="${partnerAvatar}">${isOnline ? '<div class="online-dot"></div>' : ''}</div>` : `<div class="avatar">${(chatName||'?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`)}<div class="chat-header-info"><div class="chat-header-name">${escapeHtml(chatName||'Чат')}</div><div class="chat-header-status ${isOnline ? 'online' : ''}">${chatType === 'private' ? (isOnline ? 'онлайн' : 'оффлайн') : 'группа'}</div></div>`;
+        
+        let avatarHtml;
+        if (chatType === 'group') {
+            avatarHtml = '<div class="avatar">👥</div>';
+        } else if (partnerAvatar) {
+            avatarHtml = `<div class="avatar"><img src="${partnerAvatar}">${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
+        } else {
+            avatarHtml = `<div class="avatar">${(chatName || '?')[0].toUpperCase()}${isOnline ? '<div class="online-dot"></div>' : ''}</div>`;
+        }
+        
+        let groupActionsHtml = '';
+        if (chatType === 'group') {
+            groupActionsHtml = `
+                <button id="groupInfoBtn" class="call-btn" title="Участники">👥</button>
+                <button id="leaveGroupBtn" class="call-btn" title="Покинуть группу">🚪</button>
+            `;
+            if (creatorId === currentUser.id) {
+                groupActionsHtml += `<button id="deleteGroupBtn" class="call-btn" title="Удалить группу" style="color:red;">🗑️</button>`;
+            }
+        }
+        
+        chatHeader.innerHTML = `
+            <button class="back-btn" id="backBtn">←</button>
+            ${avatarHtml}
+            <div class="chat-header-info">
+                <div class="chat-header-name">${escapeHtml(chatName || 'Чат')}</div>
+                <div class="chat-header-status ${isOnline ? 'online' : ''}">${chatType === 'private' ? (isOnline ? 'онлайн' : 'оффлайн') : 'группа'}</div>
+            </div>
+            ${groupActionsHtml}
+        `;
+        
         document.getElementById('backBtn').onclick = showSidebar;
+        
+        if (chatType === 'group') {
+            const infoBtn = document.getElementById('groupInfoBtn');
+            if (infoBtn) infoBtn.onclick = () => showParticipants(chatId, chatName, creatorId === currentUser.id);
+            const leaveBtn = document.getElementById('leaveGroupBtn');
+            if (leaveBtn) leaveBtn.onclick = () => leaveGroup(chatId);
+            const deleteBtn = document.getElementById('deleteGroupBtn');
+            if (deleteBtn) deleteBtn.onclick = () => deleteGroup(chatId);
+        }
+        
         inputArea.style.display = 'flex';
         typingIndicator.innerHTML = '';
         messagesDiv.innerHTML = '';
-        if (messages && messages.length > 0) messages.forEach(msg => addMessageToChat(msg, msg.user_id === currentUser.id));
-        else messagesDiv.innerHTML = '<div class="empty-state"><div>💭</div>Напишите первое сообщение</div>';
+        if (messages && messages.length > 0) {
+            messages.forEach(msg => addMessageToChat(msg, msg.user_id === currentUser.id));
+        } else {
+            messagesDiv.innerHTML = '<div class="empty-state"><div>💭</div>Напишите первое сообщение</div>';
+        }
         socket.emit('join chat', chatId);
         socket.emit('read messages', { chatId, userId: currentUser.id });
         messageInput.focus();
@@ -417,6 +486,101 @@
         const chatEl = document.querySelector(`.chat-item[data-chat-id="${chatId}"]`);
         if (chatEl) { const badge = chatEl.querySelector('.unread-badge'); if (badge) badge.remove(); }
     }
+    async function showParticipants(chatId, chatName, isCreator) {
+        const res = await fetch(`/api/chat/${chatId}/participants`);
+        if (!res.ok) return;
+        const participants = await res.json();
+        participantsModal.style.display = 'flex';
+        participantsList.innerHTML = participants.map(p => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar-sm" style="background: var(--primary);">
+                        ${p.avatar ? `<img src="${p.avatar}" width="28" height="28" style="border-radius:50%;">` : p.username[0].toUpperCase()}
+                    </div>
+                    <span>${escapeHtml(p.username)}${p.id === currentUser.id ? ' (Вы)' : ''}</span>
+                </div>
+                ${isCreator && p.id !== currentUser.id ? `<button onclick="removeParticipant(${chatId}, ${p.id}, '${escapeHtml(p.username)}')" style="background:none; border:none; cursor:pointer; color:red;" title="Удалить">❌</button>` : ''}
+            </div>
+        `).join('');
+        
+        if (isCreator) {
+            addParticipantArea.style.display = 'block';
+            addParticipantBtn.onclick = async () => {
+                const username = newParticipantName.value.trim();
+                if (!username) return;
+                const searchRes = await fetch(`/api/users/search?q=${encodeURIComponent(username)}`);
+                const users = await searchRes.json();
+                const user = users.find(u => u.username === username);
+                if (!user) { alert('Пользователь не найден'); return; }
+                const addRes = await fetch(`/api/chat/${chatId}/add-participant`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id })
+                });
+                if (addRes.ok) {
+                    newParticipantName.value = '';
+                    showParticipants(chatId, chatName, true);
+                    loadChats();
+                } else {
+                    const err = await addRes.json();
+                    alert(err.error || 'Ошибка добавления');
+                }
+            };
+        } else {
+            addParticipantArea.style.display = 'none';
+        }
+    }
+    async function removeParticipant(chatId, userId, username) {
+        if (!confirm(`Удалить ${username} из группы?`)) return;
+        const res = await fetch(`/api/chat/${chatId}/remove-participant`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (res.ok) {
+            participantsModal.style.display = 'none';
+            loadChats();
+            if (currentChat && currentChat.id === chatId) {
+                loadChat(chatId, 'group', currentChat.name, null, null, currentChat.creatorId);
+            }
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Ошибка удаления');
+        }
+    }
+    async function leaveGroup(chatId) {
+        if (!confirm('Вы уверены, что хотите покинуть группу?')) return;
+        const res = await fetch(`/api/chat/${chatId}/leave`, { method: 'POST' });
+        if (res.ok) {
+            loadChats();
+            if (currentChat && currentChat.id === chatId) {
+                currentChat = null;
+                chatHeader.innerHTML = '<button class="back-btn" id="backBtn">←</button><div style="color:var(--text-faint);">Выберите чат слева</div>';
+                messagesDiv.innerHTML = '<div class="empty-state"><div>👈</div>Выберите чат</div>';
+                inputArea.style.display = 'none';
+            }
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Ошибка');
+        }
+    }
+    async function deleteGroup(chatId) {
+        if (!confirm('Удалить группу? Это действие нельзя отменить.')) return;
+        const res = await fetch(`/api/chat/${chatId}`, { method: 'DELETE' });
+        if (res.ok) {
+            loadChats();
+            if (currentChat && currentChat.id === chatId) {
+                currentChat = null;
+                chatHeader.innerHTML = '<button class="back-btn" id="backBtn">←</button><div style="color:var(--text-faint);">Выберите чат слева</div>';
+                messagesDiv.innerHTML = '<div class="empty-state"><div>👈</div>Выберите чат</div>';
+                inputArea.style.display = 'none';
+            }
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Ошибка удаления');
+        }
+    }
+    closeParticipantsBtn.onclick = () => { participantsModal.style.display = 'none'; };
     function addMessageToChat(msg, isSent) {
         const empty = messagesDiv.querySelector('.empty-state');
         if (empty) empty.remove();
@@ -507,7 +671,7 @@
     let isCreatingGroup = false;
     confirmGroupBtn.onclick = async () => { if (isCreatingGroup) return; const name = document.getElementById('groupName').value.trim(); const membersStr = document.getElementById('groupMembers').value.trim(); if (!name) { alert('Введите название группы'); return; } isCreatingGroup = true; confirmGroupBtn.textContent = 'Создаём...'; confirmGroupBtn.disabled = true; try { const memberNames = membersStr ? membersStr.split(',').map(s => s.trim()).filter(Boolean) : []; const memberIds = []; for (const mname of memberNames) { const res = await fetch(`/api/users/search?q=${encodeURIComponent(mname)}`); const users = await res.json(); const user = users.find(u => u.username === mname); if (user) memberIds.push(user.id); } const res = await fetch('/api/chat/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, creatorId: currentUser.id, members: memberIds }) }); const data = await res.json(); if (!res.ok) alert(data.error || 'Ошибка создания группы'); else { groupModal.style.display = 'none'; document.getElementById('groupName').value = ''; document.getElementById('groupMembers').value = ''; await loadChats(); } } catch (err) { alert('Ошибка соединения'); } finally { isCreatingGroup = false; confirmGroupBtn.textContent = 'Создать'; confirmGroupBtn.disabled = false; } };
     let searchTimeout;
-    searchInput.oninput = () => { clearTimeout(searchTimeout); const query = searchInput.value.trim(); if (query.length < 2) { loadChats(); return; } searchTimeout = setTimeout(async () => { const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`); if (!res.ok) return; const users = await res.json(); const filtered = users.filter(u => u.id !== currentUser.id); if (!filtered.length) { chatsList.innerHTML = '<div class="empty-state"><div>👻</div>Пользователи не найдены</div>'; return; } chatsList.innerHTML = filtered.map(user => `<div class="chat-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-avatar="${user.avatar||''}"><div class="avatar" style="position:relative;">${user.avatar ? `<img src="${user.avatar}">` : user.username[0].toUpperCase()}${onlineUsers.has(user.id) ? '<div class="online-dot"></div>' : ''}</div><div class="chat-item-info"><div class="chat-name">${escapeHtml(user.username)}</div><div class="chat-preview">${onlineUsers.has(user.id) ? '🟢 онлайн' : 'Нажмите чтобы написать'}</div></div></div>`).join(''); document.querySelectorAll('[data-user-id]').forEach(el => { el.onclick = async () => { const userId = parseInt(el.dataset.userId); const username = el.dataset.username; const avatar = el.dataset.avatar || null; const res = await fetch('/api/chat/private', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user1: currentUser.id, user2: userId }) }); if (!res.ok) return; const data = await res.json(); searchInput.value = ''; await loadChats(); loadChat(data.chatId, 'private', username, userId, avatar); document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active')); const item = document.querySelector(`.chat-item[data-chat-id="${data.chatId}"]`); if (item) item.classList.add('active'); }; }); }, 300); };
+    searchInput.oninput = () => { clearTimeout(searchTimeout); const query = searchInput.value.trim(); if (query.length < 2) { loadChats(); return; } searchTimeout = setTimeout(async () => { const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`); if (!res.ok) return; const users = await res.json(); const filtered = users.filter(u => u.id !== currentUser.id); if (!filtered.length) { chatsList.innerHTML = '<div class="empty-state"><div>👻</div>Пользователи не найдены</div>'; return; } chatsList.innerHTML = filtered.map(user => `<div class="chat-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-avatar="${user.avatar||''}"><div class="avatar" style="position:relative;">${user.avatar ? `<img src="${user.avatar}">` : user.username[0].toUpperCase()}${onlineUsers.has(user.id) ? '<div class="online-dot"></div>' : ''}</div><div class="chat-item-info"><div class="chat-name">${escapeHtml(user.username)}</div><div class="chat-preview">${onlineUsers.has(user.id) ? '🟢 онлайн' : 'Нажмите чтобы написать'}</div></div></div>`).join(''); document.querySelectorAll('[data-user-id]').forEach(el => { el.onclick = async () => { const userId = parseInt(el.dataset.userId); const username = el.dataset.username; const avatar = el.dataset.avatar || null; const res = await fetch('/api/chat/private', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user1: currentUser.id, user2: userId }) }); if (!res.ok) return; const data = await res.json(); searchInput.value = ''; await loadChats(); loadChat(data.chatId, 'private', username, userId, avatar, null); document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active')); const item = document.querySelector(`.chat-item[data-chat-id="${data.chatId}"]`); if (item) item.classList.add('active'); }; }); }, 300); };
     (async () => {
         const res = await fetch('/api/me');
         if (!res.ok) { window.location.href = '/login'; return; }
@@ -535,3 +699,4 @@
 </script>
 </body>
 </html>
+

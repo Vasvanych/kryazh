@@ -45,6 +45,7 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         type TEXT DEFAULT 'private',
+        creator_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -87,39 +88,19 @@ db.exec(`
 // Добавляем колонки, если их нет
 try {
     db.exec('ALTER TABLE messages ADD COLUMN reply_to INTEGER');
-    console.log('✅ Добавлена колонка reply_to');
-} catch (err) {
-    if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка reply_to:', err.message);
-    }
-}
-
+} catch (err) {}
 try {
     db.exec('ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0');
-    console.log('✅ Добавлена колонка edited');
-} catch (err) {
-    if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка edited:', err.message);
-    }
-}
-
+} catch (err) {}
 try {
     db.exec('ALTER TABLE messages ADD COLUMN edited_at DATETIME');
-    console.log('✅ Добавлена колонка edited_at');
-} catch (err) {
-    if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка edited_at:', err.message);
-    }
-}
-
+} catch (err) {}
 try {
     db.exec('ALTER TABLE messages ADD COLUMN voice_url TEXT');
-    console.log('✅ Добавлена колонка voice_url');
-} catch (err) {
-    if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка voice_url:', err.message);
-    }
-}
+} catch (err) {}
+try {
+    db.exec('ALTER TABLE chats ADD COLUMN creator_id INTEGER');
+} catch (err) {}
 
 try {
     db.exec(`
