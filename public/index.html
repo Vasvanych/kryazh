@@ -262,6 +262,283 @@
             .back-btn { display: block; }
             .message-wrap { max-width: 80%; }
         }
+        /* Адаптивность для разных устройств */
+@media (max-width: 768px) {
+    .main-container {
+        max-width: 100%;
+        border-radius: 0;
+        height: 100dvh;
+    }
+    
+    .sidebar {
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.hidden {
+        transform: translateX(-100%);
+    }
+    
+    .chat-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 5;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        background: var(--surface);
+    }
+    
+    .chat-area.visible {
+        transform: translateX(0);
+    }
+    
+    .back-btn {
+        display: block !important;
+    }
+    
+    .message-wrap {
+        max-width: 85%;
+    }
+    
+    .message audio {
+        max-width: 180px;
+    }
+    
+    .message img {
+        max-width: 180px;
+    }
+    
+    .chat-header {
+        flex-wrap: wrap;
+        padding: 10px 15px;
+        gap: 8px;
+    }
+    
+    .chat-header .avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .chat-header .avatar img {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .chat-header-name {
+        font-size: 14px;
+    }
+    
+    .chat-header-status {
+        font-size: 10px;
+    }
+    
+    .call-btn {
+        font-size: 18px;
+        margin-left: 5px;
+        padding: 4px;
+    }
+    
+    .input-area {
+        padding: 10px 15px;
+        gap: 8px;
+    }
+    
+    .input-area input {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+    
+    .input-area button {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .messages {
+        padding: 15px;
+    }
+    
+    .message {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    
+    .message-sender {
+        font-size: 10px;
+    }
+    
+    .message-time {
+        font-size: 9px;
+    }
+    
+    .reaction-btn {
+        font-size: 11px;
+        padding: 2px 5px;
+    }
+    
+    .modal-content {
+        width: 90%;
+        margin: 20px;
+        padding: 20px;
+    }
+    
+    .user-info-bar {
+        padding: 12px 15px;
+    }
+    
+    .user-info-bar .avatar {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .user-info-bar .avatar img {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .search-box {
+        padding: 12px;
+    }
+    
+    .chat-item {
+        padding: 10px 12px;
+    }
+    
+    .avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .avatar img {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .chat-name {
+        font-size: 13px;
+    }
+    
+    .chat-preview {
+        font-size: 11px;
+    }
+    
+    .forward-banner, .reply-banner {
+        padding: 6px 15px;
+        font-size: 12px;
+    }
+}
+
+/* Для планшетов */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main-container {
+        max-width: 90%;
+        height: 90vh;
+    }
+    
+    .message-wrap {
+        max-width: 70%;
+    }
+    
+    .chat-header {
+        padding: 12px 18px;
+    }
+    
+    .input-area {
+        padding: 12px 18px;
+    }
+}
+
+/* Для маленьких телефонов (iPhone SE и подобные) */
+@media (max-width: 480px) {
+    .message-wrap {
+        max-width: 90%;
+    }
+    
+    .message audio {
+        max-width: 150px;
+    }
+    
+    .message img {
+        max-width: 150px;
+    }
+    
+    .chat-header .avatar {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .chat-header .avatar img {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .chat-header-name {
+        font-size: 13px;
+    }
+    
+    .call-btn {
+        font-size: 16px;
+    }
+    
+    .input-area button {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .input-area input {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .messages {
+        padding: 12px;
+    }
+    
+    .message {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+    
+    .reaction-btn {
+        font-size: 10px;
+        padding: 1px 4px;
+    }
+}
+
+/* Поддержка landscape-ориентации на телефонах */
+@media (max-width: 768px) and (orientation: landscape) {
+    .main-container {
+        height: 100dvh;
+    }
+    
+    .messages {
+        padding: 10px;
+    }
+    
+    .chat-header {
+        padding: 8px 12px;
+    }
+    
+    .input-area {
+        padding: 8px 12px;
+    }
+    
+    .chat-item {
+        padding: 8px 10px;
+    }
+}
     </style>
 </head>
 <body>
@@ -696,6 +973,23 @@
     document.getElementById('userInfoBar').onclick = (e) => { if (e.target === themeToggle || e.target === logoutBtn) return; avatarInput.click(); };
     avatarInput.onchange = async (e) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('avatar', file); const res = await fetch('/api/upload/avatar', { method: 'POST', body: formData }); const data = await res.json(); if (data.avatarUrl) { currentUser.avatar = data.avatarUrl; myAvatarEl.innerHTML = `<img src="${data.avatarUrl}" width="40" height="40" style="border-radius:50%;object-fit:cover;">`; } avatarInput.value = ''; };
     logoutBtn.onclick = async () => { await fetch('/api/logout', { method: 'POST' }); window.location.href = '/login'; };
+// Обработка изменения размера окна
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+        // На десктопе всегда показываем обе панели
+        sidebar.classList.remove('hidden');
+        chatArea.classList.remove('visible');
+    } else {
+        // На телефоне показываем чат, если он выбран
+        if (currentChat) {
+            sidebar.classList.add('hidden');
+            chatArea.classList.add('visible');
+        } else {
+            sidebar.classList.remove('hidden');
+            chatArea.classList.remove('visible');
+        }
+    }
+});
 </script>
 </body>
 </html>
