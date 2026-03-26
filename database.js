@@ -30,6 +30,7 @@ try {
     db = new Database(dbPath);
 }
 
+// Создаём таблицы (IF NOT EXISTS — не трогает существующие)
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +46,6 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         type TEXT DEFAULT 'private',
-        creator_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -85,7 +85,35 @@ db.exec(`
     );
 `);
 
-// Добавляем колонки, если их нет
+// Добавляем недостающие колонки
+try {
+    db.exec('ALTER TABLE chats ADD COLUMN creator_id INTEGER');
+    console.log('✅ Добавлена колонка creator_id в chats');
+} catch (err) {
+    if (!err.message.includes('duplicate column')) {
+        console.log('⚠️ Ошибка при добавлении creator_id:', err.message);
+    }
+}
+
+try {
+    db.exec('ALTER TABLE chats ADD COLUMN description TEXT');
+    console.log('✅ Добавлена колонка description в chats');
+} catch (err) {
+    if (!err.message.includes('duplicate column')) {
+        console.log('⚠️ Ошибка при добавлении description:', err.message);
+    }
+}
+
+try {
+    db.exec('ALTER TABLE chat_participants ADD COLUMN role TEXT DEFAULT "member"');
+    console.log('✅ Добавлена колонка role в chat_participants');
+} catch (err) {
+    if (!err.message.includes('duplicate column')) {
+        console.log('⚠️ Ошибка при добавлении role:', err.message);
+    }
+}
+
+// Добавляем колонки для сообщений
 try {
     db.exec('ALTER TABLE messages ADD COLUMN reply_to INTEGER');
 } catch (err) {}
@@ -98,10 +126,8 @@ try {
 try {
     db.exec('ALTER TABLE messages ADD COLUMN voice_url TEXT');
 } catch (err) {}
-try {
-    db.exec('ALTER TABLE chats ADD COLUMN creator_id INTEGER');
-} catch (err) {}
 
+// Индексы
 try {
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);

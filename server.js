@@ -163,7 +163,8 @@ app.get('/api/chats/:userId', requireAuth, (req, res) => {
             (SELECT created_at FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_time,
             (SELECT COUNT(*) FROM messages m
              WHERE m.chat_id = c.id AND m.user_id != @userId
-             AND m.id NOT IN (SELECT message_id FROM message_reads WHERE user_id = @userId)) as unread_count
+             AND m.id NOT IN (SELECT message_id FROM message_reads WHERE user_id = @userId)) as unread_count,
+            (SELECT role FROM chat_participants WHERE chat_id = c.id AND user_id = @userId) as user_role
         FROM chats c
         JOIN chat_participants cp ON c.id = cp.chat_id
         WHERE cp.user_id = @userId
@@ -234,10 +235,35 @@ app.post('/api/chat/group', requireAuth, (req, res) => {
         const chatResult = db.prepare("INSERT INTO chats (name, type, creator_id) VALUES (?, 'group', ?)").run(name.trim(), creatorId);
         const chatId = chatResult.lastInsertRowid;
         const allMembers = [creatorId, ...(members || []).filter(m => m !== creatorId && !isNaN(m))];
-        const insertMember = db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)');
-        allMembers.forEach(m => insertMember.run(chatId, m));
+        const insertMember = db.prepare('INSERT INTO chat_participants (chat_id, user_id, role) VALUES (?, ?, ?)');
+        allMembers.forEach(m => insertMember.run(chatId, m, 'member'));
         res.json({ chatId, name });
     } catch (err) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// Создать канал
+app.post('/api/chat/channel', requireAuth, (req, res) => {
+    const { name, description } = req.body;
+    const creatorId = req.session.userId;
+    
+    if (!name || name.trim().length < 1) {
+        return res.status(400).json({ error: 'Введите название канала' });
+    }
+    if (name.length > 50) {
+        return res.status(400).json({ error: 'Название слишком длинное' });
+    }
+    
+    try {
+        const chatResult = db.prepare("INSERT INTO chats (name, type, creator_id, description) VALUES (?, 'channel', ?, ?)").run(name.trim(), creatorId, description || '');
+        const chatId = chatResult.lastInsertRowid;
+        
+        db.prepare('INSERT INTO chat_participants (chat_id, user_id, role) VALUES (?, ?, ?)').run(chatId, creatorId, 'admin');
+        
+        res.json({ chatId, name });
+    } catch (err) {
+        console.error('Ошибка создания канала:', err);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
@@ -248,18 +274,26 @@ app.get('/api/chat/:chatId/participants', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const access = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
     if (!access) return res.status(403).json({ error: 'Доступ запрещён' });
-    const rows = db.prepare(`SELECT u.id, u.username, u.avatar FROM users u JOIN chat_participants cp ON u.id = cp.user_id WHERE cp.chat_id = ?`).all(chatId);
+    const rows = db.prepare(`SELECT u.id, u.username, u.avatar, cp.role FROM users u JOIN chat_participants cp ON u.id = cp.user_id WHERE cp.chat_id = ?`).all(chatId);
     res.json(rows);
 });
 
-// Добавить участника в группу
+// Роль участника в канале
+app.get('/api/chat/:chatId/participant-role', requireAuth, (req, res) => {
+    const chatId = req.params.chatId;
+    const userId = req.session.userId;
+    const participant = db.prepare('SELECT role FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
+    res.json({ role: participant ? participant.role : null });
+});
+
+// Добавить участника в группу/канал
 app.post('/api/chat/:chatId/add-participant', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const currentUserId = req.session.userId;
     const { userId: newUserId } = req.body;
     
-    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'group'").get(chatId);
-    if (!chat) return res.status(404).json({ error: 'Группа не найдена' });
+    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND (type = 'group' OR type = 'channel')").get(chatId);
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     
     if (chat.creator_id !== currentUserId) {
         return res.status(403).json({ error: 'Только создатель может добавлять участников' });
@@ -269,55 +303,96 @@ app.post('/api/chat/:chatId/add-participant', requireAuth, (req, res) => {
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
     
     const existing = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, newUserId);
-    if (existing) return res.status(400).json({ error: 'Пользователь уже в группе' });
+    if (existing) return res.status(400).json({ error: 'Пользователь уже в чате' });
     
-    db.prepare('INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)').run(chatId, newUserId);
+    const role = chat.type === 'channel' ? 'member' : 'member';
+    db.prepare('INSERT INTO chat_participants (chat_id, user_id, role) VALUES (?, ?, ?)').run(chatId, newUserId, role);
     
     const targetSocket = onlineUsers.get(newUserId);
     if (targetSocket) {
-        io.to(targetSocket).emit('added to group', { chatId, chatName: chat.name });
+        io.to(targetSocket).emit('added to chat', { chatId, chatName: chat.name, chatType: chat.type });
     }
     
     res.json({ ok: true });
 });
 
-// Удалить участника из группы
+// Удалить участника из группы/канала
 app.delete('/api/chat/:chatId/remove-participant', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const currentUserId = req.session.userId;
     const { userId: removeUserId } = req.body;
     
-    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'group'").get(chatId);
-    if (!chat) return res.status(404).json({ error: 'Группа не найдена' });
+    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND (type = 'group' OR type = 'channel')").get(chatId);
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     
     if (chat.creator_id !== currentUserId) {
         return res.status(403).json({ error: 'Только создатель может удалять участников' });
     }
     
     if (removeUserId === chat.creator_id) {
-        return res.status(400).json({ error: 'Нельзя удалить создателя группы' });
+        return res.status(400).json({ error: 'Нельзя удалить создателя' });
     }
     
     db.prepare('DELETE FROM chat_participants WHERE chat_id = ? AND user_id = ?').run(chatId, removeUserId);
     
     const targetSocket = onlineUsers.get(removeUserId);
     if (targetSocket) {
-        io.to(targetSocket).emit('removed from group', { chatId, chatName: chat.name });
+        io.to(targetSocket).emit('removed from chat', { chatId, chatName: chat.name });
     }
     
     res.json({ ok: true });
 });
 
-// Выйти из группы
+// Назначить администратора канала
+app.post('/api/chat/:chatId/make-admin', requireAuth, (req, res) => {
+    const chatId = parseInt(req.params.chatId);
+    const currentUserId = req.session.userId;
+    const { userId: targetUserId } = req.body;
+    
+    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'channel'").get(chatId);
+    if (!chat) return res.status(404).json({ error: 'Канал не найден' });
+    
+    if (chat.creator_id !== currentUserId) {
+        return res.status(403).json({ error: 'Только создатель канала может назначать администраторов' });
+    }
+    
+    db.prepare('UPDATE chat_participants SET role = "admin" WHERE chat_id = ? AND user_id = ?').run(chatId, targetUserId);
+    
+    res.json({ ok: true });
+});
+
+// Удалить администратора канала
+app.post('/api/chat/:chatId/remove-admin', requireAuth, (req, res) => {
+    const chatId = parseInt(req.params.chatId);
+    const currentUserId = req.session.userId;
+    const { userId: targetUserId } = req.body;
+    
+    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'channel'").get(chatId);
+    if (!chat) return res.status(404).json({ error: 'Канал не найден' });
+    
+    if (chat.creator_id !== currentUserId) {
+        return res.status(403).json({ error: 'Только создатель канала может удалять администраторов' });
+    }
+    
+    if (targetUserId === chat.creator_id) {
+        return res.status(400).json({ error: 'Нельзя удалить создателя канала' });
+    }
+    
+    db.prepare('UPDATE chat_participants SET role = "member" WHERE chat_id = ? AND user_id = ?').run(chatId, targetUserId);
+    
+    res.json({ ok: true });
+});
+
+// Выйти из группы/канала
 app.post('/api/chat/:chatId/leave', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const userId = req.session.userId;
     
-    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'group'").get(chatId);
-    if (!chat) return res.status(404).json({ error: 'Группа не найдена' });
+    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND (type = 'group' OR type = 'channel')").get(chatId);
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     
     if (chat.creator_id === userId) {
-        return res.status(400).json({ error: 'Создатель не может покинуть группу, только удалить её' });
+        return res.status(400).json({ error: 'Создатель не может покинуть чат, только удалить его' });
     }
     
     db.prepare('DELETE FROM chat_participants WHERE chat_id = ? AND user_id = ?').run(chatId, userId);
@@ -325,16 +400,16 @@ app.post('/api/chat/:chatId/leave', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Удалить группу (только для создателя)
+// Удалить чат (только для создателя)
 app.delete('/api/chat/:chatId', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const userId = req.session.userId;
     
-    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'group'").get(chatId);
-    if (!chat) return res.status(404).json({ error: 'Группа не найдена' });
+    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND (type = 'group' OR type = 'channel')").get(chatId);
+    if (!chat) return res.status(404).json({ error: 'Чат не найден' });
     
     if (chat.creator_id !== userId) {
-        return res.status(403).json({ error: 'Только создатель может удалить группу' });
+        return res.status(403).json({ error: 'Только создатель может удалить чат' });
     }
     
     db.prepare('DELETE FROM message_reactions WHERE message_id IN (SELECT id FROM messages WHERE chat_id = ?)').run(chatId);
@@ -426,11 +501,23 @@ io.on('connection', (socket) => {
     socket.on('new message', (data) => {
         const { chatId, text, userId, username, isImage, imageUrl, isVoice, voiceUrl, forwardedFrom, replyTo } = data;
         if (!chatId || !userId) return;
+        
+        // Проверяем права для каналов
+        const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
+        if (chat && chat.type === 'channel') {
+            const participant = db.prepare('SELECT role FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
+            if (!participant || participant.role !== 'admin') {
+                socket.emit('error', { message: 'Только администраторы могут писать в канале' });
+                return;
+            }
+        }
+        
         let content;
         if (isImage && imageUrl) content = imageUrl;
         else if (isVoice && voiceUrl) content = voiceUrl;
         else content = text;
         if (!content) return;
+        
         try {
             const stmt = db.prepare(`INSERT INTO messages (chat_id, user_id, content, image_url, voice_url, forwarded_from, reply_to) VALUES (?, ?, ?, ?, ?, ?, ?)`);
             const result = stmt.run(chatId, userId, content, isImage ? imageUrl : null, isVoice ? voiceUrl : null, forwardedFrom || null, replyTo ? replyTo.msgId : null);
