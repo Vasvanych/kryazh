@@ -173,7 +173,7 @@ app.get('/api/chats/:userId', requireAuth, (req, res) => {
     res.json(rows || []);
 });
 
-// Сообщения чата
+// Сообщения чата (только посты, без комментариев)
 app.get('/api/messages/:chatId', requireAuth, (req, res) => {
     const chatId = req.params.chatId;
     const userId = req.session.userId;
@@ -184,7 +184,7 @@ app.get('/api/messages/:chatId', requireAuth, (req, res) => {
             (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
         FROM messages m
         JOIN users u ON m.user_id = u.id
-        WHERE m.chat_id = ?
+        WHERE m.chat_id = ? AND m.parent_id IS NULL
         ORDER BY m.created_at ASC
     `).all(chatId);
     const messages = rows.map(msg => {
@@ -495,6 +495,34 @@ app.get('/api/online-users', requireAuth, (req, res) => {
     res.json([...onlineUsers.keys()]);
 });
 
+// Получить комментарии к сообщению
+app.get('/api/messages/:messageId/comments', requireAuth, (req, res) => {
+    const messageId = req.params.messageId;
+    const userId = req.session.userId;
+    
+    const originalMsg = db.prepare('SELECT chat_id FROM messages WHERE id = ?').get(messageId);
+    if (!originalMsg) {
+        return res.status(404).json({ error: 'Сообщение не найдено' });
+    }
+    
+    const access = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?')
+        .get(originalMsg.chat_id, userId);
+    if (!access) {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const comments = db.prepare(`
+        SELECT m.*, u.username, u.avatar,
+            (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.parent_id = ?
+        ORDER BY m.created_at ASC
+    `).all(messageId);
+    
+    res.json(comments);
+});
+
 app.use((err, req, res, next) => {
     if (err.message && err.message.includes('Разрешены только')) return res.status(400).json({ error: err.message });
     if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Файл слишком большой' });
@@ -520,18 +548,23 @@ io.on('connection', (socket) => {
         socket.to(`chat_${chatId}`).emit('stop typing');
     });
 
-    socket.on('new message', (data) => {
-        const { chatId, text, userId, username, isImage, imageUrl, isVoice, voiceUrl, forwardedFrom, replyTo } = data;
+      socket.on('new message', (data) => {
+        const { chatId, text, userId, username, isImage, imageUrl, isVoice, voiceUrl, forwardedFrom, replyTo, parentId } = data;
         if (!chatId || !userId) return;
         
         const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
-        if (chat && chat.type === 'channel') {
+        
+        // ========== ГЛАВНОЕ ИСПРАВЛЕНИЕ ==========
+        // Если это комментарий (parentId есть) — пропускаем проверку прав
+        // Если это пост (parentId нет) — проверяем, что пользователь админ
+        if (chat && chat.type === 'channel' && !parentId) {
             const participant = db.prepare('SELECT role FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
             if (!participant || participant.role !== 'admin') {
                 socket.emit('error', { message: 'Только администраторы могут писать в канале' });
                 return;
             }
         }
+        // ========================================
         
         let content;
         if (isImage && imageUrl) content = imageUrl;
@@ -540,17 +573,44 @@ io.on('connection', (socket) => {
         if (!content) return;
         
         try {
-            const stmt = db.prepare(`INSERT INTO messages (chat_id, user_id, content, image_url, voice_url, forwarded_from, reply_to) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-            const result = stmt.run(chatId, userId, content, isImage ? imageUrl : null, isVoice ? voiceUrl : null, forwardedFrom || null, replyTo ? replyTo.msgId : null);
+            const stmt = db.prepare(`
+                INSERT INTO messages (chat_id, user_id, content, image_url, voice_url, forwarded_from, reply_to, parent_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            const result = stmt.run(
+                chatId, userId, content,
+                isImage ? imageUrl : null,
+                isVoice ? voiceUrl : null,
+                forwardedFrom || null,
+                replyTo ? replyTo.msgId : null,
+                parentId || null
+            );
             const msgId = result.lastInsertRowid;
             db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(msgId, userId);
-            let newMsg = db.prepare(`SELECT m.*, u.username, u.avatar, (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?`).get(msgId);
+            let newMsg = db.prepare(`
+                SELECT m.*, u.username, u.avatar, 
+                    (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count 
+                FROM messages m 
+                JOIN users u ON m.user_id = u.id 
+                WHERE m.id = ?
+            `).get(msgId);
             if (newMsg.reply_to) {
-                const replyMsg = db.prepare(`SELECT m.content, u.username FROM messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?`).get(newMsg.reply_to);
+                const replyMsg = db.prepare(`
+                    SELECT m.content, u.username 
+                    FROM messages m 
+                    JOIN users u ON m.user_id = u.id 
+                    WHERE m.id = ?
+                `).get(newMsg.reply_to);
                 if (replyMsg) newMsg.reply_to_data = { content: replyMsg.content, username: replyMsg.username };
             }
             if (newMsg.voice_url) newMsg.isVoice = true;
-            io.to(`chat_${chatId}`).emit('new message', newMsg);
+            
+            if (parentId) {
+                socket.emit('new message', newMsg);
+                socket.to(`chat_${chatId}`).emit('comment added', newMsg);
+            } else {
+                io.to(`chat_${chatId}`).emit('new message', newMsg);
+            }
         } catch (err) {
             console.error('Ошибка сохранения сообщения:', err);
         }

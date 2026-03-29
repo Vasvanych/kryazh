@@ -68,6 +68,7 @@ db.exec(`
         voice_url TEXT,
         forwarded_from TEXT,
         reply_to INTEGER,
+        parent_id INTEGER,
         edited INTEGER DEFAULT 0,
         edited_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -122,6 +123,16 @@ try {
         CREATE INDEX IF NOT EXISTS idx_reads ON message_reads(message_id);
     `);
 } catch (err) {}
+
+// Добавляем колонку parent_id для комментариев (если её нет)
+try {
+    db.exec('ALTER TABLE messages ADD COLUMN parent_id INTEGER');
+    console.log('✅ Добавлена колонка parent_id в messages');
+} catch (err) {
+    if (!err.message.includes('duplicate column')) {
+        console.log('⚠️ Ошибка при добавлении parent_id:', err.message);
+    }
+}
 
 console.log('✅ База данных готова');
 
