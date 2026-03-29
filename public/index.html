@@ -982,7 +982,7 @@
         </div>
         <div class="settings-item">
             <span class="settings-label">ℹ️ О приложении</span>
-            <span>Kryazh Messenger v1.3.0</span>
+            <span>Kryazh Messenger v1.2.6</span>
         </div>
         <button id="closeSettingsBtn" class="cancel-btn">Закрыть</button>
     </div>
@@ -1123,6 +1123,55 @@
     const commentInput = document.getElementById('commentInput');
     const sendCommentBtn = document.getElementById('sendCommentBtn');
     const closeCommentsBtn = document.getElementById('closeCommentsBtn');
+    
+    // ============= УВЕДОМЛЕНИЯ =============
+    async function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            console.log('❌ Браузер не поддерживает уведомления');
+            return false;
+        }
+        
+        if (Notification.permission === 'granted') {
+            console.log('✅ Уведомления уже разрешены');
+            return true;
+        }
+        
+        if (Notification.permission !== 'denied') {
+            const permission = await Notification.requestPermission();
+            console.log('📢 Разрешение на уведомления:', permission);
+            return permission === 'granted';
+        }
+        
+        console.log('❌ Уведомления запрещены пользователем');
+        return false;
+    }
+    
+    function sendNotification(title, body, chatId, messageId) {
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') return;
+        
+        const notificationsSetting = localStorage.getItem('notifications');
+        if (notificationsSetting === 'off') return;
+        
+        if (currentChat && currentChat.id === chatId) return;
+        
+        const notification = new Notification(title, {
+            body: body,
+            icon: '/favicon.ico',
+            tag: `chat-${chatId}`,
+            renotify: true
+        });
+        
+        notification.onclick = () => {
+            window.focus();
+            const chatEl = document.querySelector(`.chat-item[data-chat-id="${chatId}"]`);
+            if (chatEl) {
+                chatEl.click();
+            }
+            notification.close();
+        };
+    }
+    // ======================================
     
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -1619,6 +1668,24 @@
         renderChatsList();
     };
     
+    // Уведомления — обработчик изменения настройки
+    if (notificationsSelect) {
+        notificationsSelect.onchange = async () => {
+            const value = notificationsSelect.value;
+            localStorage.setItem('notifications', value);
+            if (value === 'on') {
+                const granted = await requestNotificationPermission();
+                if (!granted) {
+                    notificationsSelect.value = 'off';
+                    localStorage.setItem('notifications', 'off');
+                    alert('❌ Не удалось включить уведомления. Разрешите их в настройках браузера.');
+                } else {
+                    console.log('✅ Уведомления включены');
+                }
+            }
+        };
+    }
+    
     // Выход
     logoutBtn.onclick = async () => {
         await fetch('/api/logout', { method: 'POST' });
@@ -1716,6 +1783,13 @@
         socket.emit('auth', currentUser.id);
         const onlineRes = await fetch('/api/online-users');
         (await onlineRes.json()).forEach(id => onlineUsers.add(id));
+        
+        // Запрашиваем разрешение на уведомления, если включено в настройках
+        const notifSetting = localStorage.getItem('notifications');
+        if (notifSetting === 'on') {
+            await requestNotificationPermission();
+        }
+        
         socket.on('user online', (userId) => { onlineUsers.add(userId); loadChats(); });
         socket.on('user offline', (userId) => { onlineUsers.delete(userId); loadChats(); });
         socket.on('typing', ({ username }) => { typingIndicator.innerHTML = `${escapeHtml(username)} печатает...`; });
@@ -1727,6 +1801,30 @@
                 socket.emit('read messages', { chatId: currentChat.id, userId: currentUser.id });
             }
             loadChats();
+            
+            // Отправляем уведомление, если сообщение не от текущего пользователя и не комментарий
+            if (msg.user_id !== currentUser.id && !msg.parent_id) {
+                let chatName = '';
+                const chat = allChats.find(c => c.id === msg.chat_id);
+                if (chat) {
+                    if (chat.type === 'private') {
+                        chatName = msg.username;
+                    } else {
+                        chatName = chat.name;
+                    }
+                }
+                
+                let messageText = msg.content || '';
+                if (messageText.includes('/uploads/voice/')) {
+                    messageText = '🎤 Голосовое сообщение';
+                } else if (messageText.includes('/uploads/')) {
+                    messageText = '📷 Фото';
+                } else if (messageText.length > 50) {
+                    messageText = messageText.slice(0, 50) + '...';
+                }
+                
+                sendNotification(chatName, messageText, msg.chat_id, msg.id);
+            }
         });
         socket.on('message edited', (updatedMsg) => { const row = document.querySelector(`.message-row[data-msg-id="${updatedMsg.id}"]`); if (row) { const msgDiv = row.querySelector('.message'); if (msgDiv) { let content = updatedMsg.content; if (content.includes('/uploads/voice/')) content = `<audio controls><source src="${content}" type="audio/webm"></audio>`; else if (content.includes('/uploads/')) content = `<img src="${content}" onclick="window.open('${content}')">`; else content = escapeHtml(content); const editedMark = updatedMsg.edited ? '<span style="font-size:10px; opacity:0.6;"> (ред.)</span>' : ''; const time = new Date(updatedMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); const forwardedLabel = updatedMsg.forwarded_from ? `<div class="forwarded-label">↪ Переслано от ${escapeHtml(updatedMsg.forwarded_from)}</div>` : ''; let replyHtml = ''; if (updatedMsg.reply_to && updatedMsg.reply_to_data) replyHtml = `<div class="reply-quote"><strong>${escapeHtml(updatedMsg.reply_to_data.username)}</strong>${escapeHtml(updatedMsg.reply_to_data.content.slice(0, 80))}</div>`; const sender = updatedMsg.user_id !== currentUser.id && currentChatType === 'group' ? `<div class="message-sender">${escapeHtml(updatedMsg.username)}</div>` : ''; msgDiv.innerHTML = `${forwardedLabel}${replyHtml}${sender}${content}${editedMark}<div class="message-footer"><span class="message-time">${time}</span></div>`; } } });
         socket.on('message deleted', ({ messageId }) => { const row = document.querySelector(`.message-row[data-msg-id="${messageId}"]`); if (row) row.remove(); });
