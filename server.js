@@ -268,6 +268,28 @@ app.post('/api/chat/channel', requireAuth, (req, res) => {
     }
 });
 
+// Загрузка аватарки канала
+app.post('/api/chat/:chatId/upload-avatar', requireAuth, uploadAvatar.single('avatar'), (req, res) => {
+    const chatId = req.params.chatId;
+    const userId = req.session.userId;
+    
+    const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'channel'").get(chatId);
+    if (!chat) {
+        return res.status(404).json({ error: 'Канал не найден' });
+    }
+    if (chat.creator_id !== userId) {
+        return res.status(403).json({ error: 'Только создатель может менять аватарку канала' });
+    }
+    
+    if (!req.file) {
+        return res.status(400).json({ error: 'Нет файла' });
+    }
+    
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    db.prepare('UPDATE chats SET avatar = ? WHERE id = ?').run(avatarUrl, chatId);
+    res.json({ avatarUrl });
+});
+
 // Участники чата
 app.get('/api/chat/:chatId/participants', requireAuth, (req, res) => {
     const chatId = req.params.chatId;
@@ -427,7 +449,7 @@ app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
     res.json({ imageUrl: `/uploads/${req.file.filename}` });
 });
 
-// Загрузка аватарки
+// Загрузка аватарки пользователя
 app.post('/api/upload/avatar', requireAuth, uploadAvatar.single('avatar'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Нет файла' });
     const avatarUrl = `/uploads/avatars/${req.file.filename}`;
@@ -502,7 +524,6 @@ io.on('connection', (socket) => {
         const { chatId, text, userId, username, isImage, imageUrl, isVoice, voiceUrl, forwardedFrom, replyTo } = data;
         if (!chatId || !userId) return;
         
-        // Проверяем права для каналов
         const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
         if (chat && chat.type === 'channel') {
             const participant = db.prepare('SELECT role FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);

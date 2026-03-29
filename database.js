@@ -88,27 +88,19 @@ db.exec(`
     );
 `);
 
-// Добавляем недостающие колонки
+// Добавляем колонки, если их нет
 try {
     db.exec('ALTER TABLE chats ADD COLUMN creator_id INTEGER');
-    console.log('✅ Добавлена колонка creator_id в chats');
 } catch (err) {}
-
 try {
     db.exec('ALTER TABLE chats ADD COLUMN description TEXT');
-    console.log('✅ Добавлена колонка description в chats');
 } catch (err) {}
-
 try {
     db.exec('ALTER TABLE chats ADD COLUMN avatar TEXT');
-    console.log('✅ Добавлена колонка avatar в chats');
 } catch (err) {}
-
 try {
     db.exec('ALTER TABLE chat_participants ADD COLUMN role TEXT DEFAULT "member"');
-    console.log('✅ Добавлена колонка role в chat_participants');
 } catch (err) {}
-
 try {
     db.exec('ALTER TABLE messages ADD COLUMN reply_to INTEGER');
 } catch (err) {}
