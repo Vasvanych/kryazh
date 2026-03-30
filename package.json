@@ -1,20 +1,21 @@
 {
   "name": "kryazh",
   "version": "1.0.0",
-  "description": "",
+  "description": "Kryazh Messenger - secure chat application",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js",
+    "prod": "NODE_ENV=production node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["chat", "messenger", "realtime"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.8.0",
-    "better-sqlite3-session-store": "^0.1.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "express-session": "^1.19.0",
@@ -22,5 +23,8 @@
     "multer": "^2.1.1",
     "session-file-store": "^1.5.0",
     "socket.io": "^4.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

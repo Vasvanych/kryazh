@@ -30,6 +30,10 @@ try {
     db = new Database(dbPath);
 }
 
+// Включаем WAL режим для лучшей производительности
+db.pragma('journal_mode = WAL');
+
+// Создание таблиц
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,44 +93,46 @@ db.exec(`
     );
 `);
 
-// Добавляем колонки, если их нет
-try {
-    db.exec('ALTER TABLE chats ADD COLUMN creator_id INTEGER');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE chats ADD COLUMN description TEXT');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE chats ADD COLUMN avatar TEXT');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE chat_participants ADD COLUMN role TEXT DEFAULT "member"');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE messages ADD COLUMN reply_to INTEGER');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE messages ADD COLUMN edited_at DATETIME');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE messages ADD COLUMN voice_url TEXT');
-} catch (err) {}
-try {
-    db.exec('ALTER TABLE messages ADD COLUMN parent_id INTEGER');
-} catch (err) {}
+// Добавляем недостающие колонки (без ошибок)
+const columns = [
+    'ALTER TABLE chats ADD COLUMN creator_id INTEGER',
+    'ALTER TABLE chats ADD COLUMN description TEXT',
+    'ALTER TABLE chats ADD COLUMN avatar TEXT',
+    'ALTER TABLE chat_participants ADD COLUMN role TEXT DEFAULT "member"',
+    'ALTER TABLE messages ADD COLUMN reply_to INTEGER',
+    'ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0',
+    'ALTER TABLE messages ADD COLUMN edited_at DATETIME',
+    'ALTER TABLE messages ADD COLUMN voice_url TEXT',
+    'ALTER TABLE messages ADD COLUMN parent_id INTEGER'
+];
 
+columns.forEach(sql => {
+    try {
+        db.exec(sql);
+    } catch (err) {
+        // Колонка уже существует — игнорируем
+    }
+});
+
+// Создаем индексы для оптимизации запросов
 try {
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
         CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_parent ON messages(parent_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
         CREATE INDEX IF NOT EXISTS idx_participants_user ON chat_participants(user_id);
-        CREATE INDEX IF NOT EXISTS idx_reads ON message_reads(message_id);
+        CREATE INDEX IF NOT EXISTS idx_participants_chat ON chat_participants(chat_id);
+        CREATE INDEX IF NOT EXISTS idx_reads_message ON message_reads(message_id);
+        CREATE INDEX IF NOT EXISTS idx_reads_user ON message_reads(user_id);
+        CREATE INDEX IF NOT EXISTS idx_chats_type ON chats(type);
+        CREATE INDEX IF NOT EXISTS idx_chats_creator ON chats(creator_id);
     `);
-} catch (err) {}
+} catch (err) {
+    console.error('Ошибка создания индексов:', err);
+}
 
 console.log('✅ База данных готова');
 
 module.exports = db;
+
