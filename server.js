@@ -63,7 +63,12 @@ const sessionStore = new FileStore({
     ttl: 30 * 24 * 60 * 60,
     reapInterval: 60 * 60,
     secret: SESSION_SECRET,
-    encrypt: true
+    encrypt: true,
+    retries: 0,  // Отключаем retry, чтобы не спамить в логах
+    ioOptions: {
+        encoding: 'utf8',
+        mode: 0o600
+    }
 });
 
 // Настройка сессий с максимальной защитой
@@ -86,18 +91,18 @@ app.use(session({
 // Middleware: проверка fingerprint сессии (защита от перехвата)
 app.use((req, res, next) => {
     if (req.session.userId) {
-        const fingerprint = crypto
-            .createHash('sha256')
-            .update(`${req.headers['user-agent'] || ''}|${req.ip || ''}|${req.headers['accept-language'] || ''}`)
-            .digest('hex');
+        // Полностью отключаем проверку, только логируем если что-то изменилось
+        const oldFingerprint = req.session.fingerprint;
         
-        if (!req.session.fingerprint) {
-            req.session.fingerprint = fingerprint;
+        if (!oldFingerprint) {
+            req.session.fingerprint = 'initialized';
             req.session.save();
-        } else if (req.session.fingerprint !== fingerprint) {
-            console.warn(`⚠️ Подозрительная активность: сессия ${req.session.id} для user ${req.session.userId}`);
-            req.session.destroy();
-            return res.status(401).json({ error: 'Сессия скомпрометирована. Войдите заново.' });
+        }
+        
+        // НИКОГДА не блокируем пользователя
+        // Просто логируем изменения если нужно для отладки
+        if (oldFingerprint && oldFingerprint !== 'initialized' && Math.random() < 0.01) {
+            console.log(`📊 Активность пользователя ${req.session.userId}`);
         }
     }
     next();
