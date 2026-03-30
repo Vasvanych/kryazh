@@ -28,43 +28,6 @@ const userSessions = new Map(); // Привязка userId к socketId
 
 const isRailway = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.RAILWAY_ENVIRONMENT;
 
-// ============================================
-// ВРЕМЕННЫЙ КОД ДЛЯ ОЧИСТКИ СЕССИЙ
-// ============================================
-// isRailway уже объявлена выше, используем её
-if (typeof isRailway !== 'undefined' && isRailway) {
-    console.log('🔧 Запущена очистка старых сессий...');
-    
-    const sessionsDir = '/data/sessions';
-    
-    try {
-        if (fs.existsSync(sessionsDir)) {
-            const files = fs.readdirSync(sessionsDir);
-            let deletedCount = 0;
-            
-            files.forEach(file => {
-                const filePath = path.join(sessionsDir, file);
-                try {
-                    fs.unlinkSync(filePath);
-                    deletedCount++;
-                    console.log(`   🗑️ Удален: ${file}`);
-                } catch (err) {
-                    console.log(`   ❌ Ошибка удаления ${file}:`, err.message);
-                }
-            });
-            
-            console.log(`✅ Очистка завершена! Удалено ${deletedCount} файлов сессий`);
-        } else {
-            console.log('📁 Папка сессий не найдена, создаю...');
-            fs.mkdirSync(sessionsDir, { recursive: true });
-        }
-    } catch (err) {
-        console.error('❌ Ошибка при очистке сессий:', err.message);
-    }
-}
-// ============================================
-// КОНЕЦ ВРЕМЕННОГО КОДА
-// ============================================
 
 let uploadDir, avatarDir, voiceDir;
 
