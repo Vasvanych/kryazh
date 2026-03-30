@@ -173,7 +173,6 @@
     </div>
 
     <script>
-        // Тема
         const theme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', theme);
         const themeBtn = document.getElementById('themeBtn');
@@ -184,11 +183,6 @@
             localStorage.setItem('theme', next);
             themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
         };
-
-        // Проверяем сессию
-        fetch('/api/me', { credentials: 'include' }).then(r => {
-            if (r.ok) window.location.href = '/';
-        });
 
         const errorMsg = document.getElementById('errorMsg');
         const loginBtn = document.getElementById('loginBtn');

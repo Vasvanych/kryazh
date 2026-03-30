@@ -114,6 +114,9 @@ try {
 try {
     db.exec('ALTER TABLE messages ADD COLUMN voice_url TEXT');
 } catch (err) {}
+try {
+    db.exec('ALTER TABLE messages ADD COLUMN parent_id INTEGER');
+} catch (err) {}
 
 try {
     db.exec(`
@@ -123,16 +126,6 @@ try {
         CREATE INDEX IF NOT EXISTS idx_reads ON message_reads(message_id);
     `);
 } catch (err) {}
-
-// Добавляем колонку parent_id для комментариев (если её нет)
-try {
-    db.exec('ALTER TABLE messages ADD COLUMN parent_id INTEGER');
-    console.log('✅ Добавлена колонка parent_id в messages');
-} catch (err) {
-    if (!err.message.includes('duplicate column')) {
-        console.log('⚠️ Ошибка при добавлении parent_id:', err.message);
-    }
-}
 
 console.log('✅ База данных готова');
 

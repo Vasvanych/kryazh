@@ -7,6 +7,7 @@ const multer = require('multer');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
@@ -20,30 +21,52 @@ const onlineUsers = new Map();
 
 const isRailway = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.RAILWAY_ENVIRONMENT;
 
-let uploadDir, avatarDir, voiceDir;
+let uploadDir, avatarDir, voiceDir, sessionDir;
 
 if (isRailway) {
     uploadDir = '/data/uploads';
     avatarDir = '/data/uploads/avatars';
     voiceDir = '/data/uploads/voice';
+    sessionDir = '/data/sessions';
     console.log('🚀 Railway режим: загрузки в /data/uploads');
 } else {
     uploadDir = path.join(__dirname, 'uploads');
     avatarDir = path.join(__dirname, 'uploads', 'avatars');
     voiceDir = path.join(__dirname, 'uploads', 'voice');
+    sessionDir = path.join(__dirname, 'sessions');
     console.log('💻 Локальный режим');
 }
 
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
-if (!fs.existsSync(voiceDir)) fs.mkdirSync(voiceDir, { recursive: true });
+// СОЗДАЁМ ВСЕ НЕОБХОДИМЫЕ ПАПКИ
+const dirsToCreate = [uploadDir, avatarDir, voiceDir, sessionDir];
+dirsToCreate.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log('📁 Создана папка:', dir);
+    }
+});
 
 app.use(helmet({ contentSecurityPolicy: false }));
+
+// Сессии в файлах
+const sessionStore = new FileStore({
+    path: sessionDir,
+    ttl: 30 * 24 * 60 * 60,
+    retries: 0,
+    reapInterval: 3600
+});
+
 app.use(session({
+    store: sessionStore,
     secret: 'kryazh-super-secret-key-2024',
     resave: false,
     saveUninitialized: false,
-    cookie: { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 }
+    cookie: { 
+        httpOnly: true, 
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        secure: false,
+        sameSite: 'lax'
+    }
 }));
 
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
@@ -98,11 +121,18 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadDir));
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// ============= СТРАНИЦЫ =============
+app.get('/', (req, res) => {
+    if (!req.session.userId) {
+        return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
 
-// Регистрация
+// ============= АВТОРИЗАЦИЯ =============
 app.post('/api/register', authLimiter, async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -123,7 +153,6 @@ app.post('/api/register', authLimiter, async (req, res) => {
     }
 });
 
-// Вход
 app.post('/api/login', authLimiter, async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -153,7 +182,7 @@ app.get('/api/me', (req, res) => {
     res.json(user);
 });
 
-// Список чатов
+// ============= ЧАТЫ =============
 app.get('/api/chats/:userId', requireAuth, (req, res) => {
     if (parseInt(req.params.userId) !== req.session.userId)
         return res.status(403).json({ error: 'Доступ запрещён' });
@@ -173,7 +202,6 @@ app.get('/api/chats/:userId', requireAuth, (req, res) => {
     res.json(rows || []);
 });
 
-// Сообщения чата (только посты, без комментариев)
 app.get('/api/messages/:chatId', requireAuth, (req, res) => {
     const chatId = req.params.chatId;
     const userId = req.session.userId;
@@ -204,7 +232,6 @@ app.get('/api/messages/:chatId', requireAuth, (req, res) => {
     res.json(messages);
 });
 
-// Поиск пользователей
 app.get('/api/users/search', requireAuth, (req, res) => {
     const query = req.query.q;
     if (!query || query.length < 2) return res.json([]);
@@ -212,7 +239,6 @@ app.get('/api/users/search', requireAuth, (req, res) => {
     res.json(rows || []);
 });
 
-// Создать личный чат
 app.post('/api/chat/private', requireAuth, (req, res) => {
     const user1 = req.session.userId;
     const user2 = parseInt(req.body.user2);
@@ -224,7 +250,6 @@ app.post('/api/chat/private', requireAuth, (req, res) => {
     res.json({ chatId });
 });
 
-// Создать групповой чат
 app.post('/api/chat/group', requireAuth, (req, res) => {
     const { name, members } = req.body;
     const creatorId = req.session.userId;
@@ -243,7 +268,6 @@ app.post('/api/chat/group', requireAuth, (req, res) => {
     }
 });
 
-// Создать канал
 app.post('/api/chat/channel', requireAuth, (req, res) => {
     const { name, description } = req.body;
     const creatorId = req.session.userId;
@@ -268,7 +292,6 @@ app.post('/api/chat/channel', requireAuth, (req, res) => {
     }
 });
 
-// Загрузка аватарки канала
 app.post('/api/chat/:chatId/upload-avatar', requireAuth, uploadAvatar.single('avatar'), (req, res) => {
     const chatId = req.params.chatId;
     const userId = req.session.userId;
@@ -290,7 +313,33 @@ app.post('/api/chat/:chatId/upload-avatar', requireAuth, uploadAvatar.single('av
     res.json({ avatarUrl });
 });
 
-// Участники чата
+app.get('/api/messages/:messageId/comments', requireAuth, (req, res) => {
+    const messageId = req.params.messageId;
+    const userId = req.session.userId;
+    
+    const originalMsg = db.prepare('SELECT chat_id FROM messages WHERE id = ?').get(messageId);
+    if (!originalMsg) {
+        return res.status(404).json({ error: 'Сообщение не найдено' });
+    }
+    
+    const access = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?')
+        .get(originalMsg.chat_id, userId);
+    if (!access) {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const comments = db.prepare(`
+        SELECT m.*, u.username, u.avatar,
+            (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.parent_id = ?
+        ORDER BY m.created_at ASC
+    `).all(messageId);
+    
+    res.json(comments);
+});
+
 app.get('/api/chat/:chatId/participants', requireAuth, (req, res) => {
     const chatId = req.params.chatId;
     const userId = req.session.userId;
@@ -300,7 +349,6 @@ app.get('/api/chat/:chatId/participants', requireAuth, (req, res) => {
     res.json(rows);
 });
 
-// Роль участника в канале
 app.get('/api/chat/:chatId/participant-role', requireAuth, (req, res) => {
     const chatId = req.params.chatId;
     const userId = req.session.userId;
@@ -308,7 +356,6 @@ app.get('/api/chat/:chatId/participant-role', requireAuth, (req, res) => {
     res.json({ role: participant ? participant.role : null });
 });
 
-// Добавить участника в группу/канал
 app.post('/api/chat/:chatId/add-participant', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const currentUserId = req.session.userId;
@@ -338,7 +385,6 @@ app.post('/api/chat/:chatId/add-participant', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Удалить участника из группы/канала
 app.delete('/api/chat/:chatId/remove-participant', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const currentUserId = req.session.userId;
@@ -365,7 +411,6 @@ app.delete('/api/chat/:chatId/remove-participant', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Назначить администратора канала
 app.post('/api/chat/:chatId/make-admin', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const currentUserId = req.session.userId;
@@ -383,7 +428,6 @@ app.post('/api/chat/:chatId/make-admin', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Удалить администратора канала
 app.post('/api/chat/:chatId/remove-admin', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const currentUserId = req.session.userId;
@@ -405,7 +449,6 @@ app.post('/api/chat/:chatId/remove-admin', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Выйти из группы/канала
 app.post('/api/chat/:chatId/leave', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const userId = req.session.userId;
@@ -422,7 +465,6 @@ app.post('/api/chat/:chatId/leave', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Удалить чат (только для создателя)
 app.delete('/api/chat/:chatId', requireAuth, (req, res) => {
     const chatId = parseInt(req.params.chatId);
     const userId = req.session.userId;
@@ -443,13 +485,12 @@ app.delete('/api/chat/:chatId', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Загрузка изображения
+// ============= ЗАГРУЗКА ФАЙЛОВ =============
 app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Нет файла' });
     res.json({ imageUrl: `/uploads/${req.file.filename}` });
 });
 
-// Загрузка аватарки пользователя
 app.post('/api/upload/avatar', requireAuth, uploadAvatar.single('avatar'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Нет файла' });
     const avatarUrl = `/uploads/avatars/${req.file.filename}`;
@@ -457,13 +498,12 @@ app.post('/api/upload/avatar', requireAuth, uploadAvatar.single('avatar'), (req,
     res.json({ avatarUrl });
 });
 
-// Загрузка голосового сообщения
 app.post('/api/upload/voice', requireAuth, uploadVoice.single('audio'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Нет файла' });
     res.json({ audioUrl: `/uploads/voice/${req.file.filename}` });
 });
 
-// Редактировать сообщение
+// ============= СООБЩЕНИЯ =============
 app.put('/api/messages/:messageId', requireAuth, (req, res) => {
     const messageId = req.params.messageId;
     const userId = req.session.userId;
@@ -477,7 +517,6 @@ app.put('/api/messages/:messageId', requireAuth, (req, res) => {
     res.json(updated);
 });
 
-// Удалить сообщение
 app.delete('/api/messages/:messageId', requireAuth, (req, res) => {
     const messageId = req.params.messageId;
     const userId = req.session.userId;
@@ -490,37 +529,8 @@ app.delete('/api/messages/:messageId', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// Онлайн пользователи
 app.get('/api/online-users', requireAuth, (req, res) => {
     res.json([...onlineUsers.keys()]);
-});
-
-// Получить комментарии к сообщению
-app.get('/api/messages/:messageId/comments', requireAuth, (req, res) => {
-    const messageId = req.params.messageId;
-    const userId = req.session.userId;
-    
-    const originalMsg = db.prepare('SELECT chat_id FROM messages WHERE id = ?').get(messageId);
-    if (!originalMsg) {
-        return res.status(404).json({ error: 'Сообщение не найдено' });
-    }
-    
-    const access = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?')
-        .get(originalMsg.chat_id, userId);
-    if (!access) {
-        return res.status(403).json({ error: 'Доступ запрещён' });
-    }
-    
-    const comments = db.prepare(`
-        SELECT m.*, u.username, u.avatar,
-            (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id) as read_count
-        FROM messages m
-        JOIN users u ON m.user_id = u.id
-        WHERE m.parent_id = ?
-        ORDER BY m.created_at ASC
-    `).all(messageId);
-    
-    res.json(comments);
 });
 
 app.use((err, req, res, next) => {
@@ -548,15 +558,12 @@ io.on('connection', (socket) => {
         socket.to(`chat_${chatId}`).emit('stop typing');
     });
 
-      socket.on('new message', (data) => {
+    socket.on('new message', (data) => {
         const { chatId, text, userId, username, isImage, imageUrl, isVoice, voiceUrl, forwardedFrom, replyTo, parentId } = data;
         if (!chatId || !userId) return;
         
         const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
         
-        // ========== ГЛАВНОЕ ИСПРАВЛЕНИЕ ==========
-        // Если это комментарий (parentId есть) — пропускаем проверку прав
-        // Если это пост (parentId нет) — проверяем, что пользователь админ
         if (chat && chat.type === 'channel' && !parentId) {
             const participant = db.prepare('SELECT role FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(chatId, userId);
             if (!participant || participant.role !== 'admin') {
@@ -564,7 +571,6 @@ io.on('connection', (socket) => {
                 return;
             }
         }
-        // ========================================
         
         let content;
         if (isImage && imageUrl) content = imageUrl;
@@ -645,6 +651,49 @@ io.on('connection', (socket) => {
             }
         } catch (err) {
             console.error('Ошибка реакции:', err);
+        }
+    });
+
+    // ============= ВИДЕОЗВОНКИ =============
+    socket.on('call start', ({ to, from, fromName, offer }) => {
+        const targetSocket = onlineUsers.get(to);
+        if (targetSocket) {
+            console.log(`📞 Звонок от ${fromName} (${from}) к ${to}`);
+            io.to(targetSocket).emit('incoming call', { from, fromName, offer });
+        } else {
+            socket.emit('call rejected', { from: to, reason: 'offline' });
+        }
+    });
+
+    socket.on('call accept', ({ to, from, answer }) => {
+        const targetSocket = onlineUsers.get(to);
+        if (targetSocket) {
+            console.log(`✅ Звонок принят от ${from} к ${to}`);
+            io.to(targetSocket).emit('call accepted', { from, answer });
+        }
+    });
+
+    socket.on('call reject', ({ to, from }) => {
+        const targetSocket = onlineUsers.get(to);
+        if (targetSocket) {
+            console.log(`❌ Звонок отклонён от ${from} к ${to}`);
+            io.to(targetSocket).emit('call rejected', { from });
+        }
+    });
+
+    socket.on('call signal', ({ to, from, signal }) => {
+        const targetSocket = onlineUsers.get(to);
+        if (targetSocket) {
+            console.log(`📡 ICE кандидат от ${from} к ${to}`);
+            io.to(targetSocket).emit('call signal', { from, signal });
+        }
+    });
+
+    socket.on('call end', ({ to, from }) => {
+        const targetSocket = onlineUsers.get(to);
+        if (targetSocket) {
+            console.log(`🔚 Звонок завершён от ${from} к ${to}`);
+            io.to(targetSocket).emit('call ended', { from });
         }
     });
 

@@ -134,10 +134,6 @@
             themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
         };
 
-        fetch('/api/me', { credentials: 'include' }).then(r => {
-            if (r.ok) window.location.href = '/';
-        });
-
         const errorMsg = document.getElementById('errorMsg');
         const registerBtn = document.getElementById('registerBtn');
         const usernameInput = document.getElementById('username');
