@@ -13,7 +13,6 @@ const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 
 // ВРЕМЕННЫЙ КОД — УДАЛИТЬ ПОСЛЕ ПЕРВОГО ЗАПУСКА
-const bcrypt = require('bcrypt');
 try {
     // Добавляем колонку role
     db.exec('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');
