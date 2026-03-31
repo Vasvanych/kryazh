@@ -30,16 +30,15 @@ try {
     db = new Database(dbPath);
 }
 
-// Включаем WAL режим для лучшей производительности
 db.pragma('journal_mode = WAL');
 
-// Создание таблиц
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         avatar TEXT,
+        role TEXT DEFAULT 'user',
         online INTEGER DEFAULT 0,
         last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -93,7 +92,7 @@ db.exec(`
     );
 `);
 
-// Добавляем недостающие колонки (без ошибок)
+// Добавляем недостающие колонки
 const columns = [
     'ALTER TABLE chats ADD COLUMN creator_id INTEGER',
     'ALTER TABLE chats ADD COLUMN description TEXT',
@@ -103,18 +102,19 @@ const columns = [
     'ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0',
     'ALTER TABLE messages ADD COLUMN edited_at DATETIME',
     'ALTER TABLE messages ADD COLUMN voice_url TEXT',
-    'ALTER TABLE messages ADD COLUMN parent_id INTEGER'
+    'ALTER TABLE messages ADD COLUMN parent_id INTEGER',
+    'ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"'
 ];
 
 columns.forEach(sql => {
     try {
         db.exec(sql);
     } catch (err) {
-        // Колонка уже существует — игнорируем
+        // Колонка уже существует
     }
 });
 
-// Создаем индексы для оптимизации запросов
+// Создаем индексы
 try {
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
@@ -129,7 +129,35 @@ try {
         CREATE INDEX IF NOT EXISTS idx_chats_creator ON chats(creator_id);
     `);
 } catch (err) {
-    console.error('Ошибка создания индексов:', err);
+    // Индексы уже есть
+}
+
+// Проверяем и создаём/обновляем админа
+try {
+    // Проверяем, существует ли пользователь kryazh
+    const existingUser = db.prepare('SELECT id, role FROM users WHERE username = ?').get('kryazh');
+    
+    if (!existingUser) {
+        // Создаём нового админа
+        const bcrypt = require('bcrypt');
+        const hash = bcrypt.hashSync('123MaTeYsH123', 10);
+        db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, "admin")').run('kryazh', hash);
+        console.log('\n═══════════════════════════════════════════════');
+        console.log('👑 АДМИНИСТРАТОР СОЗДАН!');
+        console.log('   Логин: kryazh');
+        console.log('   Пароль: 123MaTeYsH123');
+        console.log('═══════════════════════════════════════════════\n');
+    } else if (existingUser.role !== 'admin') {
+        // Делаем существующего пользователя админом
+        db.prepare('UPDATE users SET role = "admin" WHERE username = "kryazh"').run();
+        console.log('\n═══════════════════════════════════════════════');
+        console.log('👑 Пользователь kryazh назначен АДМИНИСТРАТОРОМ!');
+        console.log('═══════════════════════════════════════════════\n');
+    } else {
+        console.log('✅ Администратор kryazh уже существует');
+    }
+} catch (err) {
+    console.log('ℹ️ Пропускаем создание админа:', err.message);
 }
 
 console.log('✅ База данных готова');

@@ -983,6 +983,7 @@
             <div class="profile-actions">
                 <button class="profile-btn" id="openProfileBtn">👤 Профиль</button>
                 <button class="profile-btn" id="openSettingsBtn">⚙️ Настройки</button>
+                <button class="profile-btn" id="adminPanelBtn" style="display: none;">👑 Админ-панель</button>
                 <button class="profile-btn" id="logoutBtn">🚪 Выход</button>
             </div>
         </div>
@@ -1976,6 +1977,18 @@
         const res = await fetch('/api/me');
         if (!res.ok) { window.location.href = '/login'; return; }
         currentUser = await res.json();
+        // Показываем кнопку админ-панели только админам
+const adminPanelBtn = document.getElementById('adminPanelBtn');
+if (adminPanelBtn) {
+    if (currentUser.role === 'admin') {
+        adminPanelBtn.style.display = 'block';
+        adminPanelBtn.onclick = () => {
+            window.location.href = '/admin.html';
+        };
+    } else {
+        adminPanelBtn.style.display = 'none';
+    }
+}
         if (currentUsernameSpan) currentUsernameSpan.textContent = currentUser.username;
         if (currentUser.avatar) { if (myAvatarEl) myAvatarEl.textContent = ''; if (avatarImg) { avatarImg.style.display = 'block'; avatarImg.src = currentUser.avatar; } } else { if (myAvatarEl) myAvatarEl.textContent = currentUser.username[0].toUpperCase(); if (avatarImg) avatarImg.style.display = 'none'; }
         if (document.getElementById('app')) document.getElementById('app').style.display = 'flex';

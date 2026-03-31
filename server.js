@@ -235,7 +235,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 
     try {
         const hash = await bcrypt.hash(password, 10);
-        const stmt = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
+        const stmt = db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, "user")');
         const result = stmt.run(username, hash);
         
         const fingerprint = crypto
@@ -245,6 +245,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
         
         req.session.userId = result.lastInsertRowid;
         req.session.username = username;
+        req.session.role = 'user';
         req.session.fingerprint = fingerprint;
         
         req.session.save((err) => {
@@ -266,6 +267,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 // Вход
 app.post('/api/login', authLimiter, async (req, res) => {
     const { username, password } = req.body;
+    
     
     if (!username || !password) {
         return res.status(400).json({ error: 'Заполните все поля' });
@@ -289,6 +291,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
         
         req.session.userId = user.id;
         req.session.username = user.username;
+        req.session.role = user.role;
         req.session.fingerprint = fingerprint;
         
         req.session.save((err) => {
@@ -331,7 +334,7 @@ app.post('/api/logout', (req, res) => {
 
 // Проверка авторизации
 app.get('/api/me', requireAuth, (req, res) => {
-    const user = db.prepare('SELECT id, username, avatar FROM users WHERE id = ?').get(req.session.userId);
+    const user = db.prepare('SELECT id, username, avatar, role FROM users WHERE id = ?').get(req.session.userId);
     if (!user) {
         req.session.destroy();
         return res.status(401).json({ error: 'Не авторизован' });
@@ -769,6 +772,151 @@ app.use((err, req, res, next) => {
     }
     console.error('Server error:', err);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+});
+
+// ============= АДМИН-ПАНЕЛЬ =============
+
+// Middleware для проверки прав администратора
+function requireAdmin(req, res, next) {
+    if (!req.session.userId) {
+        return res.status(401).json({ error: 'Не авторизован' });
+    }
+    
+    // Проверяем роль из сессии
+    if (req.session.role !== 'admin') {
+        return res.status(403).json({ error: 'Доступ запрещён. Только для администраторов.' });
+    }
+    
+    next();
+}
+
+// Проверка для фронтенда (возвращает данные пользователя)
+app.get('/api/admin/me', requireAuth, (req, res) => {
+    const user = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.session.userId);
+    res.json(user);
+});
+
+// Статистика
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
+    const users = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    const chats = db.prepare('SELECT COUNT(*) as count FROM chats').get();
+    const messages = db.prepare('SELECT COUNT(*) as count FROM messages').get();
+    const online = onlineUsers.size;
+    res.json({ 
+        users: users.count, 
+        chats: chats.count, 
+        messages: messages.count, 
+        online 
+    });
+});
+
+// Список пользователей
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+    const users = db.prepare('SELECT id, username, role, created_at FROM users ORDER BY id DESC').all();
+    res.json(users);
+});
+
+// Список чатов
+app.get('/api/admin/chats', requireAdmin, (req, res) => {
+    const chats = db.prepare(`
+        SELECT c.*, COUNT(cp.user_id) as participants_count 
+        FROM chats c 
+        LEFT JOIN chat_participants cp ON c.id = cp.chat_id 
+        GROUP BY c.id 
+        ORDER BY c.id DESC
+    `).all();
+    res.json(chats);
+});
+
+// Список сообщений (последние 200)
+app.get('/api/admin/messages', requireAdmin, (req, res) => {
+    const messages = db.prepare(`
+        SELECT m.*, u.username 
+        FROM messages m 
+        LEFT JOIN users u ON m.user_id = u.id 
+        ORDER BY m.id DESC 
+        LIMIT 200
+    `).all();
+    res.json(messages);
+});
+
+// Сделать пользователя администратором
+app.post('/api/admin/make-admin/:userId', requireAdmin, (req, res) => {
+    const userId = req.params.userId;
+    try {
+        // Нельзя изменить роль у самого себя через этот endpoint
+        if (parseInt(userId) === req.session.userId) {
+            return res.status(400).json({ error: 'Нельзя изменить свою роль' });
+        }
+        db.prepare('UPDATE users SET role = "admin" WHERE id = ?').run(userId);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Удалить пользователя
+app.delete('/api/admin/users/:userId', requireAdmin, (req, res) => {
+    const userId = req.params.userId;
+    try {
+        // Нельзя удалить самого себя
+        if (parseInt(userId) === req.session.userId) {
+            return res.status(400).json({ error: 'Нельзя удалить самого себя' });
+        }
+        
+        // Удаляем все реакции пользователя
+        db.prepare('DELETE FROM message_reactions WHERE user_id = ?').run(userId);
+        // Удаляем все отметки о прочтении
+        db.prepare('DELETE FROM message_reads WHERE user_id = ?').run(userId);
+        // Удаляем все сообщения пользователя
+        db.prepare('DELETE FROM messages WHERE user_id = ?').run(userId);
+        // Удаляем пользователя из участников чатов
+        db.prepare('DELETE FROM chat_participants WHERE user_id = ?').run(userId);
+        // Удаляем самого пользователя
+        db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+        
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Удалить чат
+app.delete('/api/admin/chats/:chatId', requireAdmin, (req, res) => {
+    const chatId = req.params.chatId;
+    try {
+        // Удаляем реакции сообщений чата
+        db.prepare('DELETE FROM message_reactions WHERE message_id IN (SELECT id FROM messages WHERE chat_id = ?)').run(chatId);
+        // Удаляем отметки о прочтении сообщений чата
+        db.prepare('DELETE FROM message_reads WHERE message_id IN (SELECT id FROM messages WHERE chat_id = ?)').run(chatId);
+        // Удаляем сообщения чата
+        db.prepare('DELETE FROM messages WHERE chat_id = ?').run(chatId);
+        // Удаляем участников чата
+        db.prepare('DELETE FROM chat_participants WHERE chat_id = ?').run(chatId);
+        // Удаляем сам чат
+        db.prepare('DELETE FROM chats WHERE id = ?').run(chatId);
+        
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Удалить сообщение
+app.delete('/api/admin/messages/:messageId', requireAdmin, (req, res) => {
+    const messageId = req.params.messageId;
+    try {
+        // Удаляем реакции сообщения
+        db.prepare('DELETE FROM message_reactions WHERE message_id = ?').run(messageId);
+        // Удаляем отметки о прочтении
+        db.prepare('DELETE FROM message_reads WHERE message_id = ?').run(messageId);
+        // Удаляем само сообщение
+        db.prepare('DELETE FROM messages WHERE id = ?').run(messageId);
+        
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ============= WEBSOCKET =============
