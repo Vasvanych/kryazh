@@ -28,7 +28,21 @@ const userSessions = new Map(); // Привязка userId к socketId
 
 const isRailway = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.RAILWAY_ENVIRONMENT;
 
-
+// ВРЕМЕННО: очистка старых сессий (удалить после первого запуска)
+if (isRailway) {
+    const sessionsDir = '/data/sessions';
+    if (fs.existsSync(sessionsDir)) {
+        const files = fs.readdirSync(sessionsDir);
+        let deleted = 0;
+        files.forEach(file => {
+            try {
+                fs.unlinkSync(path.join(sessionsDir, file));
+                deleted++;
+            } catch(e) {}
+        });
+        if (deleted > 0) console.log(`🗑️ Удалено ${deleted} старых сессий`);
+    }
+}
 
 let uploadDir, avatarDir, voiceDir;
 
@@ -983,6 +997,11 @@ app.delete('/api/admin/messages/:messageId', requireAdmin, (req, res) => {
     }
 });
 
+// Отдаём публичный ключ для клиента
+app.get('/api/push/public-key', (req, res) => {
+    res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || null });
+});
+
 // ============= PUSH API =============
 
 // Сохранить подписку на push-уведомления
@@ -1093,7 +1112,7 @@ io.on('connection', (socket) => {
         socket.to(`chat_${chatId}`).emit('stop typing');
     });
 
-    socket.on('new message', (data) => {
+    socket.on('new message', async (data) => {
         const { chatId, text, userId, username, isImage, imageUrl, isVoice, voiceUrl, forwardedFrom, replyTo, parentId } = data;
         
         if (!chatId || !userId) return;
@@ -1135,6 +1154,48 @@ io.on('connection', (socket) => {
                 parentId || null
             );
             const msgId = result.lastInsertRowid;
+
+            // Отправляем push-уведомления всем участникам чата (кроме отправителя)
+if (!parentId) { // Не отправляем для комментариев
+    try {
+        // Получаем название чата
+        let chatName = null;
+        if (chat.type !== 'private') {
+            const chatInfo = db.prepare('SELECT name FROM chats WHERE id = ?').get(chatId);
+            chatName = chatInfo?.name;
+        }
+        
+        // Получаем всех участников чата, кроме отправителя
+        const participants = db.prepare(`
+            SELECT user_id FROM chat_participants 
+            WHERE chat_id = ? AND user_id != ?
+        `).all(chatId, userId);
+        
+        // Для каждого участника отправляем уведомление
+        for (const p of participants) {
+            let notificationTitle = '';
+            let notificationBody = '';
+            
+            if (chat.type === 'private') {
+                notificationTitle = username;  // Имя собеседника
+                notificationBody = content.length > 100 ? content.substring(0, 100) + '...' : content;
+            } else {
+                notificationTitle = chatName || 'Групповой чат';
+                notificationBody = `${username}: ${content.length > 80 ? content.substring(0, 80) + '...' : content}`;
+            }
+            
+            await sendPushNotification(
+                p.user_id,
+                notificationTitle,
+                notificationBody,
+                { chatId, messageId: msgId, type: 'new_message' }
+            );
+        }
+    } catch (err) {
+        console.error('Ошибка отправки push-уведомлений:', err);
+    }
+}
+
             db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(msgId, userId);
             
             let newMsg = db.prepare(`
