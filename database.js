@@ -127,14 +127,24 @@ try {
 } catch (err) {}
 
 // ============= СОЗДАНИЕ АДМИНА =============
+// Просто пытаемся создать или обновить админа
 try {
-    const user = db.prepare('SELECT id FROM users WHERE username = "kryazh"').get();
-    if (!user) {
+    // Сначала добавляем колонку role если её нет
+    db.exec('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');
+} catch (e) {}
+
+try {
+    // Проверяем есть ли пользователь kryazh
+    const row = db.prepare("SELECT id FROM users WHERE username = 'kryazh'").get();
+    
+    if (!row) {
+        // Создаём нового
         const hash = bcrypt.hashSync('123MaTeYsH123', 10);
-        db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, "admin")').run('kryazh', hash);
+        db.prepare("INSERT INTO users (username, password, role) VALUES ('kryazh', ?, 'admin')").run(hash);
         console.log('✅ Админ kryazh создан');
     } else {
-        db.prepare('UPDATE users SET role = "admin" WHERE username = "kryazh"').run();
+        // Обновляем роль
+        db.prepare("UPDATE users SET role = 'admin' WHERE username = 'kryazh'").run();
         console.log('✅ Админ kryazh назначен');
     }
 } catch (err) {
