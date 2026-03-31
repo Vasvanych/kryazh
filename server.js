@@ -12,28 +12,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 
-// ВРЕМЕННЫЙ КОД — УДАЛИТЬ ПОСЛЕ ПЕРВОГО ЗАПУСКА
-try {
-    // Добавляем колонку role
-    db.exec('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');
-    console.log('✅ Колонка role добавлена');
-} catch (e) {}
-try {
-    // Делаем kryazh админом
-    const result = db.prepare('UPDATE users SET role = "admin" WHERE username = "kryazh"').run();
-    if (result.changes > 0) console.log('✅ kryazh теперь админ');
-    else console.log('⚠️ kryazh не найден, создаю...');
-} catch (e) {}
-try {
-    // Если пользователя нет — создаём
-    const user = db.prepare('SELECT id FROM users WHERE username = "kryazh"').get();
-    if (!user) {
-        const hash = bcrypt.hashSync('123MaTeYsH123', 10);
-        db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, "admin")').run('kryazh', hash);
-        console.log('✅ Админ kryazh создан');
-    }
-} catch (e) {}
-// КОНЕЦ ВРЕМЕННОГО КОДА
+
 
 const app = express();
 app.set('trust proxy', 1);
