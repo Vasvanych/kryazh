@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 
 const isRailway = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.RAILWAY_ENVIRONMENT;
 let dbPath;
@@ -21,17 +22,15 @@ if (!fs.existsSync(dbDir)) {
 let db;
 try {
     db = new Database(dbPath);
-    const integrity = db.pragma('integrity_check', { simple: true });
-    if (integrity !== 'ok') throw new Error('Corrupted');
     console.log('✅ База открыта');
 } catch (err) {
-    console.log('⚠️ Создаём новую базу...');
-    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-    db = new Database(dbPath);
+    console.log('⚠️ Ошибка открытия:', err.message);
+    process.exit(1);
 }
 
 db.pragma('journal_mode = WAL');
 
+// Создаём таблицы
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,19 +101,16 @@ const columns = [
     'ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0',
     'ALTER TABLE messages ADD COLUMN edited_at DATETIME',
     'ALTER TABLE messages ADD COLUMN voice_url TEXT',
-    'ALTER TABLE messages ADD COLUMN parent_id INTEGER',
-    'ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"'
+    'ALTER TABLE messages ADD COLUMN parent_id INTEGER'
 ];
 
 columns.forEach(sql => {
     try {
         db.exec(sql);
-    } catch (err) {
-        // Колонка уже существует
-    }
+    } catch (err) {}
 });
 
-// Создаем индексы
+// Создаём индексы
 try {
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
@@ -128,39 +124,23 @@ try {
         CREATE INDEX IF NOT EXISTS idx_chats_type ON chats(type);
         CREATE INDEX IF NOT EXISTS idx_chats_creator ON chats(creator_id);
     `);
-} catch (err) {
-    // Индексы уже есть
-}
+} catch (err) {}
 
-// Проверяем и создаём/обновляем админа
+// ============= СОЗДАНИЕ АДМИНА =============
 try {
-    // Проверяем, существует ли пользователь kryazh
-    const existingUser = db.prepare('SELECT id, role FROM users WHERE username = ?').get('kryazh');
-    
-    if (!existingUser) {
-        // Создаём нового админа
-        const bcrypt = require('bcrypt');
+    const user = db.prepare('SELECT id FROM users WHERE username = "kryazh"').get();
+    if (!user) {
         const hash = bcrypt.hashSync('123MaTeYsH123', 10);
         db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, "admin")').run('kryazh', hash);
-        console.log('\n═══════════════════════════════════════════════');
-        console.log('👑 АДМИНИСТРАТОР СОЗДАН!');
-        console.log('   Логин: kryazh');
-        console.log('   Пароль: 123MaTeYsH123');
-        console.log('═══════════════════════════════════════════════\n');
-    } else if (existingUser.role !== 'admin') {
-        // Делаем существующего пользователя админом
-        db.prepare('UPDATE users SET role = "admin" WHERE username = "kryazh"').run();
-        console.log('\n═══════════════════════════════════════════════');
-        console.log('👑 Пользователь kryazh назначен АДМИНИСТРАТОРОМ!');
-        console.log('═══════════════════════════════════════════════\n');
+        console.log('✅ Админ kryazh создан');
     } else {
-        console.log('✅ Администратор kryazh уже существует');
+        db.prepare('UPDATE users SET role = "admin" WHERE username = "kryazh"').run();
+        console.log('✅ Админ kryazh назначен');
     }
 } catch (err) {
-    console.log('ℹ️ Пропускаем создание админа:', err.message);
+    console.log('⚠️ Ошибка создания админа:', err.message);
 }
 
 console.log('✅ База данных готова');
 
 module.exports = db;
-
