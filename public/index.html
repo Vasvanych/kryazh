@@ -108,6 +108,51 @@
             --header-bg: #0f0f17;
         }
 
+                /* ============= ПАСХАЛКИ ============= */
+        
+        /* VK Тема */
+        [data-theme="ПАША"] {
+             --bg: #edeef0;
+            --sidebar-bg: #ffffff;
+            --surface: #ffffff;
+            --border: #d3d9de;
+            --text: #2c3e50;
+            --text-secondary: #6c7a89;
+            --text-muted: #9aaebf;
+            --primary: #5181b8;
+            --primary-dark: #2a5885;
+            --primary-light: #e8f0fe;
+            --msg-sent: #e5ebf1;
+            --msg-received: #ffffff;
+            --msg-received-text: #2c3e50;
+            --hover: #f0f2f5;
+            --active: #e5ebf1;
+            --online: #4bb34b;
+            --header-bg: #ffffff;
+        }
+
+        /* (бананчики) */
+        [data-theme="newhorizons"] {
+            --bg: #9fd3c7;
+            --sidebar-bg: #fef9e8;
+            --surface: #fffef7;
+            --border: #e2dcc7;
+            --text: #5b6e4a;
+            --text-secondary: #8b9a6e;
+            --text-muted: #b8c5a2;
+            --primary: #f7b05e;
+            --primary-dark: #e5a040;
+            --primary-light: #ffefcf;
+            --msg-sent: #f7b05e;
+            --msg-received: #fffef7;
+            --msg-received-text: #5b6e4a;
+            --hover: #fff5e6;
+            --active: #feefda;
+            --online: #5fad56;
+            --header-bg: #fef9e8;
+            --header-border: #e2dcc7;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
@@ -967,6 +1012,66 @@
                 width: 80px;
             }
         }
+
+               /* Дополнительные стили для новых тем */
+
+        /* ПАША (VK) */
+        [data-theme="ПАША"] .chat-header-avatar {
+            background: var(--primary);
+        }
+        
+        [data-theme="ПАША"] .message.sent {
+            background: var(--msg-sent);
+        }
+        
+        [data-theme="ПАША"] .message.received {
+            background: var(--msg-received);
+        }
+
+
+        /* зверинный перекресток (Animal Crossing) */
+        [data-theme="newhorizons"] .chat-header-avatar {
+            background: var(--primary);
+        }
+        
+        [data-theme="newhorizons"] .message.sent {
+            background: var(--msg-sent);
+            border-radius: 20px 20px 4px 20px;
+        }
+        
+        [data-theme="newhorizons"] .message.received {
+            background: var(--msg-received);
+            border-radius: 20px 20px 20px 4px;
+            border: 1px solid var(--border);
+        }
+        
+        [data-theme="newhorizons"] .profile-avatar {
+            background: var(--primary);
+        }
+        
+        [data-theme="newhorizons"] .create-btn-small {
+            background: var(--primary);
+            border-radius: 30px;
+        }
+        
+        [data-theme="newhorizons"] .input-area button {
+            background: var(--primary);
+        }
+        
+        [data-theme="newhorizons"] .chat-item.active {
+            background: var(--active);
+            border-left: 4px solid var(--primary);
+        }
+        
+        [data-theme="newhorizons"] .unread-badge {
+            background: var(--primary);
+        }
+        
+        [data-theme="newhorizons"] .online-dot {
+            background: var(--online);
+        } 
+
+
     </style>
     <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
@@ -1083,6 +1188,8 @@
                 <option value="wild">🐺 дыхание природы</option>
                 <option value="barbie">🎀 Барбикор</option>
                 <option value="cyber">💜 Киберпанк</option>
+                <option value="ПАША">📱 ПАША</option>
+                <option value="newhorizons">🏝️ бананчики</option>
             </select>
         </div>
         <div class="settings-item">
