@@ -205,6 +205,50 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadDir));
 
+// ============= PWA НАСТРОЙКИ =============
+
+// Service Worker — специальные заголовки
+app.get('/sw.js', (req, res) => {
+    // Устанавливаем правильный MIME тип
+    res.setHeader('Content-Type', 'application/javascript');
+    
+    // Разрешаем Service Worker работать на всём сайте
+    res.setHeader('Service-Worker-Allowed', '/');
+    
+    // Отключаем кэширование, чтобы SW всегда был свежим
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
+    // Отправляем файл
+    res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+
+// Манифест приложения
+app.get('/manifest.json', (req, res) => {
+    // Устанавливаем правильный MIME тип для манифеста
+    res.setHeader('Content-Type', 'application/manifest+json');
+    
+    // Кэшируем манифест (меняется редко)
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 часа
+    
+    // Отправляем файл
+    res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+});
+
+// Иконки (если нужно)
+app.get('/icons/:icon', (req, res) => {
+    const iconName = req.params.icon;
+    const iconPath = path.join(__dirname, 'public', 'icons', iconName);
+    
+    // Проверяем, существует ли файл
+    if (fs.existsSync(iconPath)) {
+        res.sendFile(iconPath);
+    } else {
+        res.status(404).send('Icon not found');
+    }
+});
+
 // ============= РОУТЫ =============
 
 app.get('/', (req, res) => {
@@ -236,7 +280,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 
     try {
         const hash = await bcrypt.hash(password, 10);
-        const stmt = db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, "user")');
+        const stmt = db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'user')");
         const result = stmt.run(username, hash);
         
         const fingerprint = crypto

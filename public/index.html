@@ -968,6 +968,13 @@
             }
         }
     </style>
+    <!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kryazh">
+<link rel="apple-touch-icon" href="/icons">
+<meta name="theme-color" content="#764ba2">
 </head>
 <body>
 
@@ -984,6 +991,7 @@
                 <button class="profile-btn" id="openProfileBtn">👤 Профиль</button>
                 <button class="profile-btn" id="openSettingsBtn">⚙️ Настройки</button>
                 <button class="profile-btn" id="adminPanelBtn" style="display: none;">👑 Админ-панель</button>
+                <button class="profile-btn" id="installBtn" style="display: none;">📱 Установить</button>
                 <button class="profile-btn" id="logoutBtn">🚪 Выход</button>
             </div>
         </div>
@@ -2029,6 +2037,41 @@ if (adminPanelBtn) {
         
         await loadChats();
     })();
+
+    // Кнопка установки PWA
+let deferredPrompt;
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installBtn) installBtn.style.display = 'block';
+});
+
+if (installBtn) {
+    installBtn.onclick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`Результат установки: ${outcome}`);
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+    };
+}
+
+// Проверяем, установлено ли приложение
+window.addEventListener('appinstalled', () => {
+    console.log('✅ Приложение установлено!');
+    if (installBtn) installBtn.style.display = 'none';
+});
+</script>
+<script>
+// Регистрация Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('✅ Service Worker зарегистрирован', reg))
+        .catch(err => console.error('❌ Ошибка регистрации SW:', err));
+}
 </script>
 </body>
 </html>
