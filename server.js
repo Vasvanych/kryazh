@@ -28,21 +28,6 @@ const userSessions = new Map(); // Привязка userId к socketId
 
 const isRailway = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.RAILWAY_ENVIRONMENT;
 
-// ВРЕМЕННО: очистка старых сессий (удалить после первого запуска)
-if (isRailway) {
-    const sessionsDir = '/data/sessions';
-    if (fs.existsSync(sessionsDir)) {
-        const files = fs.readdirSync(sessionsDir);
-        let deleted = 0;
-        files.forEach(file => {
-            try {
-                fs.unlinkSync(path.join(sessionsDir, file));
-                deleted++;
-            } catch(e) {}
-        });
-        if (deleted > 0) console.log(`🗑️ Удалено ${deleted} старых сессий`);
-    }
-}
 
 let uploadDir, avatarDir, voiceDir;
 
