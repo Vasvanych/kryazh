@@ -28,6 +28,41 @@ const userSessions = new Map(); // Привязка userId к socketId
 
 const isRailway = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.RAILWAY_ENVIRONMENT;
 
+// ============= АВТООЧИСТКА СТАРЫХ СЕССИЙ =============
+// Этот код запускается при старте сервера и удаляет все старые сессии
+if (isRailway) {
+    const sessionsDir = '/data/sessions';
+    console.log('🔧 Проверяю папку сессий...');
+    
+    try {
+        if (fs.existsSync(sessionsDir)) {
+            const files = fs.readdirSync(sessionsDir);
+            let deletedCount = 0;
+            
+            files.forEach(file => {
+                const filePath = path.join(sessionsDir, file);
+                try {
+                    fs.unlinkSync(filePath);
+                    deletedCount++;
+                } catch (err) {
+                    console.log(`   ⚠️ Не удалось удалить ${file}: ${err.message}`);
+                }
+            });
+            
+            if (deletedCount > 0) {
+                console.log(`🗑️ Удалено ${deletedCount} старых файлов сессий`);
+            } else {
+                console.log('✅ Папка сессий пуста');
+            }
+        } else {
+            console.log('📁 Папка сессий не найдена, создаю...');
+            fs.mkdirSync(sessionsDir, { recursive: true });
+        }
+    } catch (err) {
+        console.error('❌ Ошибка очистки сессий:', err.message);
+    }
+}
+// ============= КОНЕЦ АВТООЧИСТКИ =============
 
 let uploadDir, avatarDir, voiceDir;
 
@@ -792,7 +827,7 @@ function requireAdmin(req, res, next) {
 
 // Проверка для фронтенда (возвращает данные пользователя)
 app.get('/api/admin/me', requireAuth, (req, res) => {
-    const user = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.session.userId);
+    const user = db.prepare('SELECT id, username, avatar, role FROM users WHERE id = ?').get(req.session.userId);
     res.json(user);
 });
 
