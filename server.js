@@ -12,7 +12,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 
-
+const webpush = require('web-push');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -88,6 +88,25 @@ app.use(session({
     name: 'kryazh_session',
     rolling: true
 }));
+
+// ============= PUSH-УВЕДОМЛЕНИЯ =============
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+if (vapidPublicKey && vapidPrivateKey) {
+    webpush.setVapidDetails(
+        'mailto:admin@kryazh.com',  // можно заменить на свой email
+        vapidPublicKey,
+        vapidPrivateKey
+    );
+    console.log('✅ Push-уведомления настроены');
+} else {
+    console.log('⚠️ VAPID ключи не найдены, push-уведомления отключены');
+    console.log('   Добавьте VAPID_PUBLIC_KEY и VAPID_PRIVATE_KEY в переменные окружения');
+}
+
+// Хранилище подписок (в продакшене нужно хранить в БД)
+const pushSubscriptions = new Map(); // userId -> subscription
 
 // Middleware: проверка fingerprint сессии (защита от перехвата)
 app.use((req, res, next) => {
@@ -963,6 +982,73 @@ app.delete('/api/admin/messages/:messageId', requireAdmin, (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ============= PUSH API =============
+
+// Сохранить подписку на push-уведомления
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+    const subscription = req.body;
+    const userId = req.session.userId;
+    
+    if (!subscription || !subscription.endpoint) {
+        return res.status(400).json({ error: 'Неверная подписка' });
+    }
+    
+    // Сохраняем подписку
+    pushSubscriptions.set(userId, subscription);
+    console.log(`📱 Пользователь ${userId} (${req.session.username}) подписался на push-уведомления`);
+    res.json({ ok: true });
+});
+
+// Удалить подписку
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    pushSubscriptions.delete(userId);
+    console.log(`📱 Пользователь ${userId} отписался от push-уведомлений`);
+    res.json({ ok: true });
+});
+
+// Функция отправки уведомления
+async function sendPushNotification(userId, title, body, data = {}) {
+    const subscription = pushSubscriptions.get(userId);
+    if (!subscription) return false;
+    
+    try {
+        await webpush.sendNotification(
+            subscription,
+            JSON.stringify({
+                title: title,
+                body: body,
+                icon: '/icons/Kryazh.png',
+                badge: '/icons/Kryazh.png',
+                vibrate: [200, 100, 200],
+                data: {
+                    url: '/',
+                    chatId: data.chatId,
+                    messageId: data.messageId,
+                    type: data.type || 'new_message'
+                },
+                tag: `chat-${data.chatId}`,
+                renotify: true,
+                requireInteraction: true
+            })
+        );
+        console.log(`📨 Push отправлен пользователю ${userId}`);
+        return true;
+    } catch (err) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+            // Подписка устарела — удаляем
+            pushSubscriptions.delete(userId);
+            console.log(`🗑️ Удалена устаревшая подписка для пользователя ${userId}`);
+        } else {
+            console.error(`❌ Ошибка отправки push пользователю ${userId}:`, err.message);
+        }
+        return false;
+    }
+}
+
+// Экспортируем функцию для использования в WebSocket
+// (если нужно использовать в других местах)
 
 // ============= WEBSOCKET =============
 io.on('connection', (socket) => {

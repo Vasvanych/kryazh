@@ -1093,6 +1093,13 @@
             </select>
         </div>
         <div class="settings-item">
+            <span class="settings-label">🔔 Push-уведомления</span>
+            <select id="pushSelect" class="settings-select">
+                <option value="on">Включены</option>
+                <option value="off">Отключены</option>
+           </select>
+       </div>
+        <div class="settings-item">
             <span class="settings-label">🔔 Уведомления</span>
             <select id="notificationsSelect" class="settings-select">
                 <option value="on">Включены</option>
@@ -1475,6 +1482,34 @@
             }
         }
     }
+
+// Настройка push-уведомлений
+const pushSelect = document.getElementById('pushSelect');
+if (pushSelect) {
+    const savedPush = localStorage.getItem('push_notifications');
+    if (savedPush) pushSelect.value = savedPush;
+    
+    pushSelect.onchange = async () => {
+        const value = pushSelect.value;
+        localStorage.setItem('push_notifications', value);
+        
+        if (value === 'on') {
+            // Сначала запрашиваем разрешение
+            if (Notification.permission !== 'granted') {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    pushSelect.value = 'off';
+                    localStorage.setItem('push_notifications', 'off');
+                    alert('❌ Для включения уведомлений нужно разрешить их в браузере');
+                    return;
+                }
+            }
+            await subscribeToPush();
+        } else {
+            await unsubscribeFromPush();
+        }
+    };
+}
 
     // ============= ВСЕ ОСТАЛЬНЫЕ ФУНКЦИИ МЕССЕНДЖЕРА =============
     
@@ -1981,6 +2016,139 @@
     if (closeCommentsBtn) closeCommentsBtn.onclick = () => { if (commentsModal) commentsModal.style.display = 'none'; currentCommentPostId = null; };
     if (commentsModal) commentsModal.onclick = (e) => { if (e.target === commentsModal) { commentsModal.style.display = 'none'; currentCommentPostId = null; } };
     
+// ============= PUSH-УВЕДОМЛЕНИЯ (КЛИЕНТ) =============
+
+let pushSubscription = null;
+
+// Конвертация base64 в Uint8Array (нужно для подписки)
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// Подписка на push-уведомления
+async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('❌ Push-уведомления не поддерживаются в этом браузере');
+        return false;
+    }
+    
+    // Получаем публичный ключ с сервера
+async function getVapidPublicKey() {
+    try {
+        const res = await fetch('/api/push/public-key');
+        const data = await res.json();
+        return data.publicKey;
+    } catch (err) {
+        console.error('Ошибка получения ключа:', err);
+        return null;
+    }
+}
+
+// Обновлённая функция подписки
+async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('❌ Push-уведомления не поддерживаются');
+        return false;
+    }
+    
+    const vapidPublicKey = await getVapidPublicKey();
+    if (!vapidPublicKey) {
+        console.log('❌ Нет VAPID ключа на сервере');
+        return false;
+    }
+    
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            });
+        }
+        
+        const res = await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription)
+        });
+        
+        if (res.ok) {
+            console.log('✅ Push-уведомления включены');
+            pushSubscription = subscription;
+            return true;
+        }
+    } catch (err) {
+        console.error('❌ Ошибка подписки:', err);
+    }
+    return false;
+}
+    
+    try {
+        // Получаем Service Worker
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Проверяем, есть ли уже подписка
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (!subscription) {
+            // Создаём новую подписку
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            });
+        }
+        
+        // Отправляем подписку на сервер
+        const res = await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription)
+        });
+        
+        if (res.ok) {
+            console.log('✅ Push-уведомления включены');
+            pushSubscription = subscription;
+            return true;
+        } else {
+            console.log('❌ Ошибка при сохранении подписки');
+            return false;
+        }
+    } catch (err) {
+        console.error('❌ Ошибка подписки на push:', err);
+        if (err.message.includes('permission')) {
+            console.log('⚠️ Пользователь запретил уведомления');
+        }
+        return false;
+    }
+}
+
+// Отписка от push-уведомлений
+async function unsubscribeFromPush() {
+    if (!pushSubscription) return false;
+    
+    try {
+        await pushSubscription.unsubscribe();
+        await fetch('/api/push/unsubscribe', { method: 'POST' });
+        console.log('✅ Push-уведомления отключены');
+        pushSubscription = null;
+        return true;
+    } catch (err) {
+        console.error('❌ Ошибка отписки:', err);
+        return false;
+    }
+}
+
     (async () => {
         const res = await fetch('/api/me');
         if (!res.ok) { window.location.href = '/login'; return; }

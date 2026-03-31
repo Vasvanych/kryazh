@@ -96,3 +96,45 @@ self.addEventListener('notificationclick', event => {
     clients.openWindow(event.notification.data.url || '/')
   );
 });
+// Обработка push-уведомлений
+self.addEventListener('push', event => {
+    const data = event.data.json();
+    
+    const options = {
+        body: data.body,
+        icon: data.icon || '/icons/Kryazh.png',
+        badge: data.badge || '/icons/Kryazh.png',
+        vibrate: data.vibrate || [200, 100, 200],
+        data: data.data,
+        tag: data.tag,
+        renotify: data.renotify || true,
+        requireInteraction: true
+    };
+    
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+// Обработка клика по уведомлению
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    
+    const url = event.notification.data?.url || '/';
+    
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(windowClients => {
+                // Если уже есть открытое окно — фокусируем его
+                for (let client of windowClients) {
+                    if (client.url === url && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                // Иначе открываем новое окно
+                if (clients.openWindow) {
+                    return clients.openWindow(url);
+                }
+            })
+    );
+});
