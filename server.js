@@ -1202,4 +1202,28 @@ process.on('SIGTERM', () => {
     });
 });
 
+// ПРИНУДИТЕЛЬНОЕ СОЗДАНИЕ АДМИНА (временный код)
+setTimeout(() => {
+    try {
+        // Добавляем колонку если нет
+        db.exec('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');
+    } catch(e) {}
+    
+    try {
+        // Делаем kryazh админом
+        db.prepare('UPDATE users SET role = "admin" WHERE username = "kryazh"').run();
+        console.log('✅ Админ kryazh назначен');
+    } catch(e) {}
+    
+    try {
+        // Если пользователя нет — создаём
+        const user = db.prepare('SELECT id FROM users WHERE username = "kryazh"').get();
+        if (!user) {
+            const hash = bcrypt.hashSync('123MaTeYsH123', 10);
+            db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, "admin")').run('kryazh', hash);
+            console.log('✅ Админ kryazh создан');
+        }
+    } catch(e) {}
+}, 5000);
+
 server.listen(port, () => console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`));
