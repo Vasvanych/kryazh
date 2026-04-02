@@ -108,11 +108,8 @@
             --header-bg: #0f0f17;
         }
 
-                /* ============= ПАСХАЛКИ ============= */
-        
-        /* VK Тема */
         [data-theme="ПАША"] {
-             --bg: #edeef0;
+            --bg: #edeef0;
             --sidebar-bg: #ffffff;
             --surface: #ffffff;
             --border: #d3d9de;
@@ -131,7 +128,6 @@
             --header-bg: #ffffff;
         }
 
-        /* (бананчики) */
         [data-theme="newhorizons"] {
             --bg: #9fd3c7;
             --sidebar-bg: #fef9e8;
@@ -885,7 +881,6 @@
             padding: 40px;
         }
 
-        /* Call Modal Styles */
         .call-modal {
             position: fixed;
             top: 0;
@@ -1013,9 +1008,6 @@
             }
         }
 
-               /* Дополнительные стили для новых тем */
-
-        /* ПАША (VK) */
         [data-theme="ПАША"] .chat-header-avatar {
             background: var(--primary);
         }
@@ -1028,8 +1020,6 @@
             background: var(--msg-received);
         }
 
-
-        /* зверинный перекресток (Animal Crossing) */
         [data-theme="newhorizons"] .chat-header-avatar {
             background: var(--primary);
         }
@@ -1069,17 +1059,14 @@
         
         [data-theme="newhorizons"] .online-dot {
             background: var(--online);
-        } 
-
-
+        }
     </style>
-    <!-- PWA -->
-<link rel="manifest" href="/manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Kryazh">
-<link rel="apple-touch-icon" href="/icons">
-<meta name="theme-color" content="#764ba2">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kryazh">
+    <link rel="apple-touch-icon" href="/icons">
+    <meta name="theme-color" content="#764ba2">
 </head>
 <body>
 
@@ -1094,7 +1081,9 @@
             <div class="profile-status">Нажмите для смены аватарки</div>
             <div class="profile-actions">
                 <button class="profile-btn" id="openProfileBtn">👤 Профиль</button>
+                <button class="profile-btn" id="friendsBtn">👥 Друзья</button>
                 <button class="profile-btn" id="openSettingsBtn">⚙️ Настройки</button>
+                <button class="profile-btn" id="feedBtn">📰 Лента</button>
                 <button class="profile-btn" id="adminPanelBtn" style="display: none;">👑 Админ-панель</button>
                 <button class="profile-btn" id="installBtn" style="display: none;">📱 Установить</button>
                 <button class="profile-btn" id="logoutBtn">🚪 Выход</button>
@@ -1140,7 +1129,6 @@
     </div>
 </div>
 
-<!-- Call Modal -->
 <div id="callModal" class="call-modal">
     <div class="call-video-container">
         <video id="remoteVideo" class="remote-video" autoplay playsinline></video>
@@ -1288,13 +1276,12 @@
     let mediaRecorder = null, audioChunks = [], isRecording = false;
     let currentCommentPostId = null;
 
-    // ============= ВИДЕОЗВОНКИ =============
     let localStream = null;
     let peerConnection = null;
     let callActive = false;
     let currentCallPartner = null;
     let isMuted = false;
-    let isVideoOff = true; // ВИДЕО ВЫКЛЮЧЕНО ПО УМОЛЧАНИЮ
+    let isVideoOff = true;
 
     const webrtcConfig = {
         iceServers: [
@@ -1330,7 +1317,6 @@
         if (callStatus) callStatus.textContent = 'Запрос микрофона...';
         
         try {
-            // ТОЛЬКО МИКРОФОН, ВИДЕО НЕ ЗАПРАШИВАЕМ
             localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
             console.log('✅ Микрофон получен');
             
@@ -1590,35 +1576,31 @@
         }
     }
 
-// Настройка push-уведомлений
-const pushSelect = document.getElementById('pushSelect');
-if (pushSelect) {
-    const savedPush = localStorage.getItem('push_notifications');
-    if (savedPush) pushSelect.value = savedPush;
-    
-    pushSelect.onchange = async () => {
-        const value = pushSelect.value;
-        localStorage.setItem('push_notifications', value);
+    const pushSelect = document.getElementById('pushSelect');
+    if (pushSelect) {
+        const savedPush = localStorage.getItem('push_notifications');
+        if (savedPush) pushSelect.value = savedPush;
         
-        if (value === 'on') {
-            // Сначала запрашиваем разрешение
-            if (Notification.permission !== 'granted') {
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') {
-                    pushSelect.value = 'off';
-                    localStorage.setItem('push_notifications', 'off');
-                    alert('❌ Для включения уведомлений нужно разрешить их в браузере');
-                    return;
+        pushSelect.onchange = async () => {
+            const value = pushSelect.value;
+            localStorage.setItem('push_notifications', value);
+            
+            if (value === 'on') {
+                if (Notification.permission !== 'granted') {
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        pushSelect.value = 'off';
+                        localStorage.setItem('push_notifications', 'off');
+                        alert('❌ Для включения уведомлений нужно разрешить их в браузере');
+                        return;
+                    }
                 }
+                await subscribeToPush();
+            } else {
+                await unsubscribeFromPush();
             }
-            await subscribeToPush();
-        } else {
-            await unsubscribeFromPush();
-        }
-    };
-}
-
-    // ============= ВСЕ ОСТАЛЬНЫЕ ФУНКЦИИ МЕССЕНДЖЕРА =============
+        };
+    }
     
     function escapeHtml(text) { if (!text) return ''; const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
     
@@ -1689,7 +1671,6 @@ if (pushSelect) {
     const sendCommentBtn = document.getElementById('sendCommentBtn');
     const closeCommentsBtn = document.getElementById('closeCommentsBtn');
     
-    // Кнопки звонка
     const endCallBtn = document.getElementById('endCallBtn');
     const muteCallBtn = document.getElementById('muteCallBtn');
     const videoToggleBtn = document.getElementById('videoToggleBtn');
@@ -1782,11 +1763,28 @@ if (pushSelect) {
             if (chatsList) chatsList.innerHTML = html;
             document.querySelectorAll('.section-header').forEach(header => { header.onclick = () => { const content = header.nextElementSibling; if (content) content.classList.toggle('collapsed'); }; });
         }
+        
         document.querySelectorAll('.chat-item').forEach(el => {
             el.onclick = () => {
+                const chatType = el.dataset.chatType;
+                const chatId = parseInt(el.dataset.chatId);
+                const chatName = el.dataset.chatName;
+                
+                // КАНАЛЫ ОТКРЫВАЮТСЯ НА ОТДЕЛЬНОЙ СТРАНИЦЕ
+                if (chatType === 'channel') {
+                    window.location.href = `/channel.html?id=${chatId}`;
+                    return;
+                }
+                
+                // Группы и личные чаты открываются в обычном интерфейсе
                 document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active'));
                 el.classList.add('active');
-                loadChat(parseInt(el.dataset.chatId), el.dataset.chatType, el.dataset.chatName, el.dataset.partnerId ? parseInt(el.dataset.partnerId) : null, el.dataset.partnerAvatar || null, parseInt(el.dataset.chatCreator) || null, el.dataset.chatRole || null, el.dataset.chatAvatar || null);
+                loadChat(chatId, chatType, chatName, 
+                    el.dataset.partnerId ? parseInt(el.dataset.partnerId) : null, 
+                    el.dataset.partnerAvatar || null, 
+                    parseInt(el.dataset.chatCreator) || null, 
+                    el.dataset.chatRole || null, 
+                    el.dataset.chatAvatar || null);
             };
         });
     }
@@ -1846,6 +1844,8 @@ if (pushSelect) {
             } else {
                 groupActionsHtml += `<button id="leaveGroupBtn" class="call-btn" title="Покинуть">🚪</button>`;
             }
+            // Кнопка перехода на страницу канала/группы
+            groupActionsHtml += `<button id="goToPageBtn" class="call-btn" title="Страница ${chatType === 'channel' ? 'канала' : 'группы'}">📄</button>`;
         }
         
         if (chatHeader) {
@@ -1856,6 +1856,13 @@ if (pushSelect) {
         
         const callBtn = document.getElementById('callBtn');
         if (callBtn && partnerId) callBtn.onclick = () => startCall(partnerId, chatName);
+        
+        const goToPageBtn = document.getElementById('goToPageBtn');
+        if (goToPageBtn) {
+            goToPageBtn.onclick = () => {
+                window.location.href = `/channel.html?id=${chatId}`;
+            };
+        }
         
         if (chatType === 'group' || chatType === 'channel') {
             const infoBtn = document.getElementById('groupInfoBtn');
@@ -2020,7 +2027,139 @@ if (pushSelect) {
     
     let searchTimeout;
     if (searchInput) {
-        searchInput.oninput = () => { clearTimeout(searchTimeout); const query = searchInput.value.trim(); if (query.length < 2) { if (searchResults) searchResults.classList.remove('visible'); return; } searchTimeout = setTimeout(async () => { const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`); if (!res.ok) return; const users = await res.json(); const filtered = users.filter(u => u.id !== currentUser.id); if (!filtered.length) { if (searchResults) searchResults.classList.remove('visible'); return; } if (searchResults) { searchResults.innerHTML = filtered.map(user => `<div class="search-result-item" data-user-id="${user.id}" data-username="${escapeHtml(user.username)}" data-avatar="${user.avatar||''}"><div style="width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;">${user.avatar ? `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;">` : user.username[0].toUpperCase()}</div><span>${escapeHtml(user.username)}</span></div>`).join(''); searchResults.classList.add('visible'); } document.querySelectorAll('.search-result-item').forEach(el => { el.onclick = async () => { const userId = parseInt(el.dataset.userId); const username = el.dataset.username; const avatar = el.dataset.avatar || null; const res = await fetch('/api/chat/private', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user1: currentUser.id, user2: userId }) }); if (!res.ok) return; const data = await res.json(); if (searchInput) searchInput.value = ''; if (searchResults) searchResults.classList.remove('visible'); await loadChats(); loadChat(data.chatId, 'private', username, userId, avatar, null, null, null); document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active')); const item = document.querySelector(`.chat-item[data-chat-id="${data.chatId}"]`); if (item) item.classList.add('active'); }; }); }, 300); };
+        searchInput.oninput = () => {
+            clearTimeout(searchTimeout);
+            const query = searchInput.value.trim();
+            if (query.length < 2) {
+                if (searchResults) searchResults.classList.remove('visible');
+                return;
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const [usersRes, channelsRes] = await Promise.all([
+                        fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { credentials: 'include' }),
+                        fetch(`/api/channels/search?q=${encodeURIComponent(query)}`, { credentials: 'include' })
+                    ]);
+                    
+                    const users = await usersRes.json();
+                    let channels = await channelsRes.json();
+                    
+                    const foundChannels = channels.filter(c => c.type === 'channel' || c.type === 'group');
+                    const filteredUsers = users.filter(u => u.id !== currentUser?.id);
+                    
+                    if (filteredUsers.length === 0 && foundChannels.length === 0) {
+                        if (searchResults) {
+                            searchResults.innerHTML = '<div style="padding:12px; text-align:center; color:var(--text-secondary);">😕 Ничего не найдено</div>';
+                            searchResults.classList.add('visible');
+                        }
+                        return;
+                    }
+                    
+                    let resultsHtml = '';
+                    
+                    if (foundChannels.length > 0) {
+                        resultsHtml += `<div style="padding:8px 12px; font-size:12px; font-weight:600; color:var(--primary); border-bottom:1px solid var(--border);">📢 КАНАЛЫ И ГРУППЫ</div>`;
+                        resultsHtml += foundChannels.map(ch => `
+                            <div class="search-result-item" data-type="channel" data-id="${ch.id}">
+                                <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">
+                                    ${ch.type === 'channel' ? '📢' : '👥'}
+                                </div>
+                                <div style="flex:1;">
+                                    <div style="font-weight:600;">${escapeHtml(ch.name)}</div>
+                                    <div style="font-size:11px; color:var(--text-secondary);">${ch.type === 'channel' ? 'Канал' : 'Группа'} • 👥 ${ch.members_count || 0} участников</div>
+                                </div>
+                                ${!ch.is_member ? `<button class="subscribe-result-btn" data-id="${ch.id}" style="background:var(--primary);color:white;border:none;padding:4px 12px;border-radius:20px;font-size:12px;cursor:pointer;">🔔 Подписаться</button>` : '<span style="font-size:12px;color:var(--text-secondary);">✓ Подписан</span>'}
+                            </div>
+                        `).join('');
+                    }
+                    
+                    if (filteredUsers.length > 0) {
+                        resultsHtml += `<div style="padding:8px 12px; font-size:12px; font-weight:600; color:var(--primary); border-bottom:1px solid var(--border); margin-top:8px;">👤 ПОЛЬЗОВАТЕЛИ</div>`;
+                        resultsHtml += filteredUsers.map(user => `
+                            <div class="search-result-item" data-type="user" data-id="${user.id}" data-username="${escapeHtml(user.username)}">
+                                <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;">
+                                    ${user.avatar ? `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : user.username[0].toUpperCase()}
+                                </div>
+                                <div style="flex:1;">
+                                    <div style="font-weight:600;">${escapeHtml(user.username)}</div>
+                                    <div style="font-size:11px; color:var(--text-secondary);">ID: ${user.id}</div>
+                                </div>
+                                <button class="start-chat-btn" data-id="${user.id}" data-name="${escapeHtml(user.username)}" style="background:var(--primary);color:white;border:none;padding:4px 12px;border-radius:20px;font-size:12px;cursor:pointer;">💬 Написать</button>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    if (searchResults) {
+                        searchResults.innerHTML = resultsHtml;
+                        searchResults.classList.add('visible');
+                    }
+                    
+                    document.querySelectorAll('.subscribe-result-btn').forEach(btn => {
+                        btn.onclick = async (e) => {
+                            e.stopPropagation();
+                            const chatId = btn.dataset.id;
+                            try {
+                                const res = await fetch(`/api/channels/${chatId}/subscribe`, { method: 'POST', credentials: 'include' });
+                                if (res.ok) {
+                                    btn.textContent = '✓ Подписан';
+                                    btn.style.background = 'var(--text-secondary)';
+                                    btn.onclick = null;
+                                    if (typeof loadChats === 'function') loadChats();
+                                } else {
+                                    alert('Ошибка подписки');
+                                }
+                            } catch (err) {
+                                alert('Ошибка соединения');
+                            }
+                        };
+                    });
+                    
+                    document.querySelectorAll('.start-chat-btn').forEach(btn => {
+                        btn.onclick = async (e) => {
+                            e.stopPropagation();
+                            const userId = btn.dataset.id;
+                            const userName = btn.dataset.name;
+                            try {
+                                const res = await fetch('/api/chat/private', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ user1: currentUser.id, user2: userId })
+                                });
+                                const data = await res.json();
+                                if (res.ok) {
+                                    searchInput.value = '';
+                                    searchResults.classList.remove('visible');
+                                    await loadChats();
+                                    loadChat(data.chatId, 'private', userName, userId, null, null, null, null);
+                                } else {
+                                    alert(data.error || 'Ошибка');
+                                }
+                            } catch (err) {
+                                alert('Ошибка соединения');
+                            }
+                        };
+                    });
+                    
+                    document.querySelectorAll('.search-result-item').forEach(el => {
+                        el.onclick = (e) => {
+                            if (e.target.tagName === 'BUTTON') return;
+                            const type = el.dataset.type;
+                            const id = el.dataset.id;
+                            if (type === 'channel') {
+                                window.location.href = `/channel.html?id=${id}`;
+                            } else if (type === 'user') {
+                                window.location.href = `/profile.html?id=${id}`;
+                            }
+                        };
+                    });
+                    
+                } catch (err) {
+                    console.error('Ошибка поиска:', err);
+                }
+            }, 300);
+        };
     }
     
     document.addEventListener('click', (e) => { if (searchResults && searchInput && !searchResults.contains(e.target) && e.target !== searchInput && searchResults) searchResults.classList.remove('visible'); if (emojiPicker && !emojiPicker.contains(e.target)) emojiPicker.classList.remove('visible'); });
@@ -2087,17 +2226,33 @@ if (pushSelect) {
     
     if (closeParticipantsBtn) closeParticipantsBtn.onclick = () => { if (participantsModal) participantsModal.style.display = 'none'; };
     
-    if (openProfileBtn) openProfileBtn.onclick = () => {
-        if (profileUsername) profileUsername.textContent = currentUser.username;
-        if (profileCreated) profileCreated.textContent = new Date().toLocaleDateString();
-        if (profileChatsCount) profileChatsCount.textContent = allChats.length;
-        if (modalAvatar) { if (currentUser.avatar) { modalAvatar.innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;object-fit:cover;">`; } else { modalAvatar.innerHTML = currentUser.username[0].toUpperCase(); } }
-        if (profileModal) profileModal.style.display = 'flex';
-    };
-    if (closeProfileBtn) closeProfileBtn.onclick = () => { if (profileModal) profileModal.style.display = 'none'; };
-    if (openSettingsBtn) openSettingsBtn.onclick = () => { if (settingsModal) settingsModal.style.display = 'flex'; };
-    if (closeSettingsBtn) closeSettingsBtn.onclick = () => { if (settingsModal) settingsModal.style.display = 'none'; };
-    if (changeAvatarBtn) changeAvatarBtn.onclick = () => avatarInput.click();
+    if (openProfileBtn) {
+        openProfileBtn.onclick = () => {
+            if (currentUser && currentUser.id) {
+                window.location.href = `/profile.html?id=${currentUser.id}`;
+            } else {
+                console.error('Пользователь не загружен');
+                alert('Ошибка: данные пользователя не загружены');
+            }
+        };
+    }
+    
+    if (openSettingsBtn) {
+        openSettingsBtn.onclick = () => {
+            if (settingsModal) {
+                settingsModal.style.display = 'flex';
+            } else {
+                console.error('settingsModal не найден');
+            }
+        };
+    }
+    
+    const feedBtn = document.getElementById('feedBtn');
+    if (feedBtn) {
+        feedBtn.onclick = () => {
+            window.location.href = '/feed.html';
+        };
+    }
     
     if (themeSelect) themeSelect.onchange = () => { const theme = themeSelect.value; document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); };
     if (viewModeSelect) viewModeSelect.onchange = () => { viewMode = viewModeSelect.value; localStorage.setItem('viewMode', viewMode); renderChatsList(); };
@@ -2123,155 +2278,94 @@ if (pushSelect) {
     if (closeCommentsBtn) closeCommentsBtn.onclick = () => { if (commentsModal) commentsModal.style.display = 'none'; currentCommentPostId = null; };
     if (commentsModal) commentsModal.onclick = (e) => { if (e.target === commentsModal) { commentsModal.style.display = 'none'; currentCommentPostId = null; } };
     
-// ============= PUSH-УВЕДОМЛЕНИЯ (КЛИЕНТ) =============
-
-let pushSubscription = null;
-
-// Конвертация base64 в Uint8Array (нужно для подписки)
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-
-// Подписка на push-уведомления
-async function subscribeToPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log('❌ Push-уведомления не поддерживаются в этом браузере');
-        return false;
-    }
+    let pushSubscription = null;
     
-    // Получаем публичный ключ с сервера
-async function getVapidPublicKey() {
-    try {
-        const res = await fetch('/api/push/public-key');
-        const data = await res.json();
-        return data.publicKey;
-    } catch (err) {
-        console.error('Ошибка получения ключа:', err);
-        return null;
-    }
-}
-
-// Обновлённая функция подписки
-async function subscribeToPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log('❌ Push-уведомления не поддерживаются');
-        return false;
-    }
-    
-    const vapidPublicKey = await getVapidPublicKey();
-    if (!vapidPublicKey) {
-        console.log('❌ Нет VAPID ключа на сервере');
-        return false;
-    }
-    
-    try {
-        const registration = await navigator.serviceWorker.ready;
-        let subscription = await registration.pushManager.getSubscription();
-        
-        if (!subscription) {
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-            });
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
         }
-        
-        const res = await fetch('/api/push/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(subscription)
-        });
-        
-        if (res.ok) {
-            console.log('✅ Push-уведомления включены');
-            pushSubscription = subscription;
-            return true;
-        }
-    } catch (err) {
-        console.error('❌ Ошибка подписки:', err);
+        return outputArray;
     }
-    return false;
-}
     
-    try {
-        // Получаем Service Worker
-        const registration = await navigator.serviceWorker.ready;
-        
-        // Проверяем, есть ли уже подписка
-        let subscription = await registration.pushManager.getSubscription();
-        
-        if (!subscription) {
-            // Создаём новую подписку
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-            });
-        }
-        
-        // Отправляем подписку на сервер
-        const res = await fetch('/api/push/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(subscription)
-        });
-        
-        if (res.ok) {
-            console.log('✅ Push-уведомления включены');
-            pushSubscription = subscription;
-            return true;
-        } else {
-            console.log('❌ Ошибка при сохранении подписки');
+    async function subscribeToPush() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            console.log('❌ Push-уведомления не поддерживаются');
             return false;
         }
-    } catch (err) {
-        console.error('❌ Ошибка подписки на push:', err);
-        if (err.message.includes('permission')) {
-            console.log('⚠️ Пользователь запретил уведомления');
+        
+        async function getVapidPublicKey() {
+            try {
+                const res = await fetch('/api/push/public-key');
+                const data = await res.json();
+                return data.publicKey;
+            } catch (err) {
+                console.error('Ошибка получения ключа:', err);
+                return null;
+            }
+        }
+        
+        const vapidPublicKey = await getVapidPublicKey();
+        if (!vapidPublicKey) {
+            console.log('❌ Нет VAPID ключа на сервере');
+            return false;
+        }
+        
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                });
+            }
+            const res = await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(subscription)
+            });
+            if (res.ok) {
+                console.log('✅ Push-уведомления включены');
+                pushSubscription = subscription;
+                return true;
+            }
+        } catch (err) {
+            console.error('❌ Ошибка подписки:', err);
         }
         return false;
     }
-}
-
-// Отписка от push-уведомлений
-async function unsubscribeFromPush() {
-    if (!pushSubscription) return false;
     
-    try {
-        await pushSubscription.unsubscribe();
-        await fetch('/api/push/unsubscribe', { method: 'POST' });
-        console.log('✅ Push-уведомления отключены');
-        pushSubscription = null;
-        return true;
-    } catch (err) {
-        console.error('❌ Ошибка отписки:', err);
-        return false;
+    async function unsubscribeFromPush() {
+        if (!pushSubscription) return false;
+        try {
+            await pushSubscription.unsubscribe();
+            await fetch('/api/push/unsubscribe', { method: 'POST' });
+            console.log('✅ Push-уведомления отключены');
+            pushSubscription = null;
+            return true;
+        } catch (err) {
+            console.error('❌ Ошибка отписки:', err);
+            return false;
+        }
     }
-}
-
+    
     (async () => {
         const res = await fetch('/api/me');
         if (!res.ok) { window.location.href = '/login'; return; }
         currentUser = await res.json();
-        // Показываем кнопку админ-панели только админам
-const adminPanelBtn = document.getElementById('adminPanelBtn');
-if (adminPanelBtn) {
-    if (currentUser.role === 'admin') {
-        adminPanelBtn.style.display = 'block';
-        adminPanelBtn.onclick = () => {
-            window.location.href = '/admin.html';
-        };
-    } else {
-        adminPanelBtn.style.display = 'none';
-    }
-}
+        const adminPanelBtn = document.getElementById('adminPanelBtn');
+        if (adminPanelBtn) {
+            if (currentUser.role === 'admin') {
+                adminPanelBtn.style.display = 'block';
+                adminPanelBtn.onclick = () => { window.location.href = '/admin.html'; };
+            } else {
+                adminPanelBtn.style.display = 'none';
+            }
+        }
         if (currentUsernameSpan) currentUsernameSpan.textContent = currentUser.username;
         if (currentUser.avatar) { if (myAvatarEl) myAvatarEl.textContent = ''; if (avatarImg) { avatarImg.style.display = 'block'; avatarImg.src = currentUser.avatar; } } else { if (myAvatarEl) myAvatarEl.textContent = currentUser.username[0].toUpperCase(); if (avatarImg) avatarImg.style.display = 'none'; }
         if (document.getElementById('app')) document.getElementById('app').style.display = 'flex';
@@ -2312,40 +2406,60 @@ if (adminPanelBtn) {
         
         await loadChats();
     })();
-
-    // Кнопка установки PWA
-let deferredPrompt;
-const installBtn = document.getElementById('installBtn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (installBtn) installBtn.style.display = 'block';
-});
-
-if (installBtn) {
-    installBtn.onclick = async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`Результат установки: ${outcome}`);
-        deferredPrompt = null;
-        installBtn.style.display = 'none';
-    };
-}
-
-// Проверяем, установлено ли приложение
-window.addEventListener('appinstalled', () => {
-    console.log('✅ Приложение установлено!');
-    if (installBtn) installBtn.style.display = 'none';
-});
+    
+    let deferredPrompt;
+    const installBtn = document.getElementById('installBtn');
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installBtn) installBtn.style.display = 'block';
+    });
+    
+    if (installBtn) {
+        installBtn.onclick = async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`Результат установки: ${outcome}`);
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        };
+    }
+    
+    window.addEventListener('appinstalled', () => {
+        console.log('✅ Приложение установлено!');
+        if (installBtn) installBtn.style.display = 'none';
+    });
 </script>
 <script>
-// Регистрация Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
         .then(reg => console.log('✅ Service Worker зарегистрирован', reg))
         .catch(err => console.error('❌ Ошибка регистрации SW:', err));
+}
+
+const friendsBtn = document.getElementById('friendsBtn');
+if (friendsBtn) {
+    friendsBtn.onclick = () => {
+        window.location.href = '/friends.html';
+    };
+}
+
+if (closeSettingsBtn) {
+    closeSettingsBtn.onclick = () => {
+        if (settingsModal) {
+            settingsModal.style.display = 'none';
+        }
+    };
+}
+
+if (closeProfileBtn) {
+    closeProfileBtn.onclick = () => {
+        if (profileModal) {
+            profileModal.style.display = 'none';
+        }
+    };
 }
 </script>
 </body>

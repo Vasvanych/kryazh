@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Канал - Kryazh</title>
+    <style>
+        /* ============= ВСЕ ТЕМЫ ============= */
+        :root {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --border: #e0e0e0;
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --primary: #764ba2;
+            --primary-dark: #6a3d96;
+            --hover: #f0f0f0;
+            --shadow: 0 1px 2px rgba(0,0,0,0.1);
+            --danger: #ff4444;
+            --success: #4caf50;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --surface: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-secondary: #aaaaaa;
+            --primary: #9b6fc4;
+            --hover: #252525;
+            --shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        [data-theme="wild"] {
+            --bg: #2d3e2b;
+            --surface: #4a6e3a;
+            --border: #6a8e5a;
+            --text: #f5e6c4;
+            --text-secondary: #d4c4a4;
+            --primary: #c9a87b;
+            --hover: #5a7e4a;
+        }
+
+        [data-theme="barbie"] {
+            --bg: #ffd1dc;
+            --surface: #fff0f3;
+            --border: #ffb6c1;
+            --text: #c21e56;
+            --text-secondary: #e8436e;
+            --primary: #ff69b4;
+            --hover: #ffe4e9;
+        }
+
+        [data-theme="cyber"] {
+            --bg: #0a0a0f;
+            --surface: #15151f;
+            --border: #2a2a3a;
+            --text: #00ffff;
+            --text-secondary: #66ffff;
+            --primary: #ff00ff;
+            --hover: #1a1a2a;
+        }
+
+        [data-theme="ПАША"] {
+            --bg: #edeef0;
+            --surface: #ffffff;
+            --border: #d3d9de;
+            --text: #2c3e50;
+            --text-secondary: #6c7a89;
+            --primary: #5181b8;
+            --hover: #f0f2f5;
+        }
+
+        [data-theme="newhorizons"] {
+            --bg: #9fd3c7;
+            --surface: #fffef7;
+            --border: #e2dcc7;
+            --text: #5b6e4a;
+            --text-secondary: #8b9a6e;
+            --primary: #f7b05e;
+            --hover: #fff5e6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 12px;
+        }
+
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        /* Кнопка назад */
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 24px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .back-btn:active {
+            background: var(--hover);
+        }
+
+        /* Шапка канала */
+        .channel-header {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .channel-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--primary);
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            overflow: hidden;
+        }
+
+        .channel-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .channel-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .channel-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .channel-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .channel-stats span {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .subscribe-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .subscribe-btn:active {
+            transform: scale(0.96);
+        }
+
+        .subscribe-btn.unsubscribe {
+            background: var(--danger);
+        }
+
+        /* Форма создания поста */
+        .create-post-area {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .create-post-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+            margin-bottom: 12px;
+        }
+
+        .create-post-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .create-post-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .media-btn {
+            background: var(--hover);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .create-post-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Карточка поста */
+        .post {
+            background: var(--surface);
+            border-radius: 16px;
+            margin-bottom: 12px;
+            padding: 14px;
+            box-shadow: var(--shadow);
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .post-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            object-fit: cover;
+        }
+
+        .post-info {
+            flex: 1;
+        }
+
+        .post-author {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .post-date {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .post-content {
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 12px 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .post-media {
+            max-width: 100%;
+            border-radius: 12px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+
+        /* Состояния */
+        .loading, .empty {
+            text-align: center;
+            padding: 40px;
+            background: var(--surface);
+            border-radius: 16px;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .channel-avatar {
+                width: 60px;
+                height: 60px;
+                font-size: 30px;
+            }
+            .channel-name {
+                font-size: 20px;
+            }
+            .create-post-input {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Назад к чатам</a>
+        
+        <div id="channelContent">
+            <div class="loading">⏳ Загрузка...</div>
+        </div>
+    </div>
+
+    <input type="file" id="mediaInput" accept="image/*" style="display:none">
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // ============= ПРИМЕНЯЕМ ТЕМУ =============
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        // ============= ПЕРЕМЕННЫЕ =============
+        const urlParams = new URLSearchParams(window.location.search);
+        const channelId = urlParams.get('id');
+        let currentUser = null;
+        let isSubscribed = false;
+        let isCreator = false;
+        let selectedMedia = null;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000 / 60);
+            
+            if (diff < 1) return 'только что';
+            if (diff < 60) return `${diff} мин назад`;
+            if (diff < 1440) return `${Math.floor(diff / 60)} ч назад`;
+            if (diff < 10080) return `${Math.floor(diff / 1440)} дн назад`;
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        }
+
+        async function loadChannel() {
+            if (!channelId) {
+                document.getElementById('channelContent').innerHTML = '<div class="empty">❌ Канал не указан</div>';
+                return;
+            }
+
+            try {
+                const channelRes = await fetch(`/api/channels/${channelId}/info`, { credentials: 'include' });
+                if (!channelRes.ok) {
+                    document.getElementById('channelContent').innerHTML = '<div class="empty">❌ Канал не найден</div>';
+                    return;
+                }
+                const channel = await channelRes.json();
+                
+                const postsRes = await fetch(`/api/channels/${channelId}/posts?limit=50`, { credentials: 'include' });
+                const posts = await postsRes.json();
+                
+                isSubscribed = channel.is_member === 1;
+                isCreator = channel.creator_id === currentUser?.id;
+                
+                renderChannel(channel, posts);
+                
+            } catch (err) {
+                console.error('Ошибка загрузки:', err);
+                document.getElementById('channelContent').innerHTML = '<div class="empty">❌ Ошибка загрузки</div>';
+            }
+        }
+        
+        function renderChannel(channel, posts) {
+            const container = document.getElementById('channelContent');
+            
+            const defaultAvatar = channel.avatar || '';
+            const avatarHtml = defaultAvatar 
+                ? `<img src="${defaultAvatar}" alt="avatar">` 
+                : (channel.type === 'channel' ? '📢' : '👥');
+            
+            const subscribeBtnText = isSubscribed ? '🔔 Отписаться' : '🔔 Подписаться';
+            const subscribeBtnClass = isSubscribed ? 'subscribe-btn unsubscribe' : 'subscribe-btn';
+            
+            let createPostHtml = '';
+            if (isCreator && channel.type === 'channel') {
+                createPostHtml = `
+                    <div class="create-post-area">
+                        <textarea class="create-post-input" id="postContent" placeholder="Напишите пост..." rows="3"></textarea>
+                        <div class="create-post-actions">
+                            <button class="media-btn" id="mediaBtn">📷 Добавить фото</button>
+                            <button class="create-post-btn" id="createPostBtn">📝 Опубликовать</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let postsHtml = '';
+            if (posts.length === 0) {
+                postsHtml = '<div class="empty">📭 Пока нет постов</div>';
+            } else {
+                postsHtml = posts.map(post => `
+                    <div class="post">
+                        <div class="post-header">
+                            <img class="post-avatar" src="${post.avatar_url || ''}" onerror="this.style.display='none'">
+                            <div class="post-info">
+                                <div class="post-author">${escapeHtml(post.username)}</div>
+                                <div class="post-date">${formatDate(post.created_at)}</div>
+                            </div>
+                        </div>
+                        <div class="post-content">${escapeHtml(post.content)}</div>
+                        ${post.media_url ? `<img class="post-media" src="${post.media_url}" onclick="window.open('${post.media_url}', '_blank')">` : ''}
+                    </div>
+                `).join('');
+            }
+            
+            container.innerHTML = `
+                <div class="channel-header">
+                    <div class="channel-avatar">${avatarHtml}</div>
+                    <div class="channel-name">${escapeHtml(channel.name)}</div>
+                    <div class="channel-description">${escapeHtml(channel.description || 'Нет описания')}</div>
+                    <div class="channel-stats">
+                        <div>👥 <span>${channel.members_count || 0}</span> участников</div>
+                        <div>📝 <span>${posts.length}</span> постов</div>
+                    </div>
+                    <button class="${subscribeBtnClass}" id="subscribeToggleBtn">${subscribeBtnText}</button>
+                </div>
+                ${createPostHtml}
+                <div id="postsList">${postsHtml}</div>
+            `;
+            
+            const subscribeBtn = document.getElementById('subscribeToggleBtn');
+            if (subscribeBtn) subscribeBtn.onclick = () => toggleSubscribe(channel.id);
+            
+            const createPostBtn = document.getElementById('createPostBtn');
+            if (createPostBtn) createPostBtn.onclick = () => createPost(channel.id);
+            
+            const mediaBtn = document.getElementById('mediaBtn');
+            if (mediaBtn) mediaBtn.onclick = () => document.getElementById('mediaInput').click();
+        }
+        
+        async function toggleSubscribe(chatId) {
+            try {
+                let res;
+                if (isSubscribed) {
+                    res = await fetch(`/api/channels/${chatId}/subscribe`, { method: 'DELETE', credentials: 'include' });
+                } else {
+                    res = await fetch(`/api/channels/${chatId}/subscribe`, { method: 'POST', credentials: 'include' });
+                }
+                if (res.ok) {
+                    isSubscribed = !isSubscribed;
+                    loadChannel();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Ошибка');
+                }
+            } catch (err) {
+                alert('Ошибка соединения');
+            }
+        }
+        
+        async function createPost(chatId) {
+            const content = document.getElementById('postContent')?.value.trim();
+            if (!content) {
+                alert('Введите текст поста');
+                return;
+            }
+            
+            let mediaUrl = null;
+            if (selectedMedia) {
+                const formData = new FormData();
+                formData.append('image', selectedMedia);
+                const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+                const uploadData = await uploadRes.json();
+                if (uploadData.imageUrl) mediaUrl = uploadData.imageUrl;
+                selectedMedia = null;
+                document.getElementById('mediaInput').value = '';
+            }
+            
+            const res = await fetch(`/api/channels/${chatId}/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ content, mediaUrl })
+            });
+            
+            if (res.ok) {
+                document.getElementById('postContent').value = '';
+                loadChannel();
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Ошибка публикации');
+            }
+        }
+        
+        document.getElementById('mediaInput').onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                selectedMedia = file;
+                const mediaBtn = document.getElementById('mediaBtn');
+                if (mediaBtn) {
+                    mediaBtn.style.background = 'var(--primary)';
+                    mediaBtn.style.color = 'white';
+                    setTimeout(() => {
+                        mediaBtn.style.background = '';
+                        mediaBtn.style.color = '';
+                    }, 1000);
+                }
+            }
+        };
+        
+        async function init() {
+            const res = await fetch('/api/me', { credentials: 'include' });
+            if (!res.ok) {
+                window.location.href = '/login.html';
+                return;
+            }
+            currentUser = await res.json();
+            await loadChannel();
+            
+            const socket = io();
+            socket.emit('auth', currentUser.id);
+            socket.on('new_post', (post) => {
+                if (post.channel_id == channelId) loadChannel();
+            });
+        }
+        
+        init();
+    </script>
+</body>
+</html>

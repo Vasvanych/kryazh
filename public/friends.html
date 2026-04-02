@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Друзья - Kryazh</title>
+    <style>
+
+            /* ============= ВСЕ ТЕМЫ ============= */
+        :root {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --border: #e0e0e0;
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --primary: #764ba2;
+            --primary-dark: #6a3d96;
+            --hover: #f0f0f0;
+            --shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --surface: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-secondary: #aaaaaa;
+            --primary: #9b6fc4;
+            --hover: #252525;
+            --shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        [data-theme="wild"] {
+            --bg: #2d3e2b;
+            --surface: #4a6e3a;
+            --border: #6a8e5a;
+            --text: #f5e6c4;
+            --text-secondary: #d4c4a4;
+            --primary: #c9a87b;
+            --hover: #5a7e4a;
+        }
+
+        [data-theme="barbie"] {
+            --bg: #ffd1dc;
+            --surface: #fff0f3;
+            --border: #ffb6c1;
+            --text: #c21e56;
+            --text-secondary: #e8436e;
+            --primary: #ff69b4;
+            --hover: #ffe4e9;
+        }
+
+        [data-theme="cyber"] {
+            --bg: #0a0a0f;
+            --surface: #15151f;
+            --border: #2a2a3a;
+            --text: #00ffff;
+            --text-secondary: #66ffff;
+            --primary: #ff00ff;
+            --hover: #1a1a2a;
+        }
+
+        [data-theme="ПАША"] {
+            --bg: #edeef0;
+            --surface: #ffffff;
+            --border: #d3d9de;
+            --text: #2c3e50;
+            --text-secondary: #6c7a89;
+            --primary: #5181b8;
+            --hover: #f0f2f5;
+        }
+
+        [data-theme="newhorizons"] {
+            --bg: #9fd3c7;
+            --surface: #fffef7;
+            --border: #e2dcc7;
+            --text: #5b6e4a;
+            --text-secondary: #8b9a6e;
+            --primary: #f7b05e;
+            --hover: #fff5e6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 12px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 24px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: var(--surface);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .friend-item {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .friend-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .friend-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .friend-info {
+            flex: 1;
+        }
+
+        .friend-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .friend-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .online-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+            margin-right: 6px;
+        }
+
+        .offline-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            margin-right: 6px;
+        }
+
+        .friend-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .action-btn.accept {
+            background: var(--success);
+        }
+
+        .action-btn.reject {
+            background: var(--danger);
+        }
+
+        .action-btn.remove {
+            background: var(--danger);
+        }
+
+        .action-btn.cancel {
+            background: var(--warning);
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            background: var(--surface);
+            border-radius: 16px;
+            color: var(--text-secondary);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Назад</a>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="friends">👥 Друзья</button>
+            <button class="tab" data-tab="requests">📨 Заявки</button>
+            <button class="tab" data-tab="outgoing">📤 Отправленные</button>
+        </div>
+        
+        <div id="content">
+            <div class="loading">⏳ Загрузка...</div>
+        </div>
+    </div>
+
+    <!-- ПОДКЛЮЧАЕМ SOCKET.IO - ЭТО ВАЖНО! -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+        // Тема
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        let currentUser = null;
+        let onlineUsers = new Set();
+        let socket = null;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000 / 60 / 60 / 24);
+            
+            if (diff === 0) return 'сегодня';
+            if (diff === 1) return 'вчера';
+            if (diff < 7) return `${diff} дня назад`;
+            return date.toLocaleDateString('ru-RU');
+        }
+
+        async function loadFriends() {
+            const res = await fetch('/api/friends', { credentials: 'include' });
+            return await res.json();
+        }
+
+        async function loadRequests() {
+            const res = await fetch('/api/friends/requests', { credentials: 'include' });
+            return await res.json();
+        }
+
+        async function loadOutgoing() {
+            const res = await fetch('/api/friends/outgoing', { credentials: 'include' });
+            return await res.json();
+        }
+
+        async function acceptRequest(userId) {
+            const res = await fetch(`/api/friends/accept/${userId}`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (res.ok) {
+                loadCurrentTab();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Ошибка');
+            }
+        }
+
+        async function rejectRequest(userId) {
+            const res = await fetch(`/api/friends/reject/${userId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (res.ok) {
+                loadCurrentTab();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Ошибка');
+            }
+        }
+
+        async function removeFriend(userId) {
+            if (!confirm('Удалить из друзей?')) return;
+            const res = await fetch(`/api/friends/remove/${userId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (res.ok) {
+                loadCurrentTab();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Ошибка');
+            }
+        }
+
+        async function cancelRequest(userId) {
+            const res = await fetch(`/api/friends/reject/${userId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (res.ok) {
+                loadCurrentTab();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Ошибка');
+            }
+        }
+
+        let currentTab = 'friends';
+
+        async function loadCurrentTab() {
+            const content = document.getElementById('content');
+            content.innerHTML = '<div class="loading">⏳ Загрузка...</div>';
+            
+            try {
+                let data = [];
+                if (currentTab === 'friends') {
+                    data = await loadFriends();
+                    if (data.length === 0) {
+                        content.innerHTML = '<div class="empty">👥 У вас пока нет друзей<br><br>Найдите пользователей через поиск и добавьте в друзья!</div>';
+                        return;
+                    }
+                    
+                    content.innerHTML = data.map(friend => `
+                        <div class="friend-item">
+                            <div class="friend-avatar">
+                                ${friend.avatar ? `<img src="${friend.avatar}">` : friend.username[0].toUpperCase()}
+                            </div>
+                            <div class="friend-info">
+                                <div class="friend-name">${escapeHtml(friend.username)}</div>
+                                <div class="friend-meta">
+                                    <span class="${onlineUsers.has(friend.id) ? 'online-status' : 'offline-status'}"></span>
+                                    ${onlineUsers.has(friend.id) ? 'онлайн' : 'оффлайн'} • друзья с ${formatDate(friend.since)}
+                                </div>
+                            </div>
+                            <div class="friend-actions">
+                                <button class="action-btn remove" onclick="removeFriend(${friend.id})">❌ Удалить</button>
+                                <button class="action-btn" onclick="window.location.href='/profile.html?id=${friend.id}'">👤 Профиль</button>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                } else if (currentTab === 'requests') {
+                    data = await loadRequests();
+                    if (data.length === 0) {
+                        content.innerHTML = '<div class="empty">📭 Нет входящих заявок</div>';
+                        return;
+                    }
+                    
+                    content.innerHTML = data.map(req => `
+                        <div class="friend-item">
+                            <div class="friend-avatar">
+                                ${req.avatar ? `<img src="${req.avatar}">` : req.username[0].toUpperCase()}
+                            </div>
+                            <div class="friend-info">
+                                <div class="friend-name">${escapeHtml(req.username)}</div>
+                                <div class="friend-meta">отправлено ${formatDate(req.created_at)}</div>
+                            </div>
+                            <div class="friend-actions">
+                                <button class="action-btn accept" onclick="acceptRequest(${req.id})">✅ Принять</button>
+                                <button class="action-btn reject" onclick="rejectRequest(${req.id})">❌ Отклонить</button>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                } else if (currentTab === 'outgoing') {
+                    data = await loadOutgoing();
+                    if (data.length === 0) {
+                        content.innerHTML = '<div class="empty">📤 Нет отправленных заявок</div>';
+                        return;
+                    }
+                    
+                    content.innerHTML = data.map(req => `
+                        <div class="friend-item">
+                            <div class="friend-avatar">
+                                ${req.avatar ? `<img src="${req.avatar}">` : req.username[0].toUpperCase()}
+                            </div>
+                            <div class="friend-info">
+                                <div class="friend-name">${escapeHtml(req.username)}</div>
+                                <div class="friend-meta">отправлено ${formatDate(req.created_at)} • ожидает ответа</div>
+                            </div>
+                            <div class="friend-actions">
+                                <button class="action-btn cancel" onclick="cancelRequest(${req.id})">↩️ Отменить</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (err) {
+                console.error('Ошибка:', err);
+                content.innerHTML = '<div class="empty">❌ Ошибка загрузки</div>';
+            }
+        }
+
+        // Переключение вкладок
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentTab = tab.dataset.tab;
+                loadCurrentTab();
+            };
+        });
+
+        // Инициализация
+        async function init() {
+            const res = await fetch('/api/me', { credentials: 'include' });
+            if (!res.ok) {
+                window.location.href = '/login.html';
+                return;
+            }
+            currentUser = await res.json();
+            
+            // Получаем онлайн-пользователей
+            const onlineRes = await fetch('/api/online-users');
+            onlineUsers = new Set(await onlineRes.json());
+            
+            // Подключаем WebSocket
+            socket = io();
+            socket.emit('auth', currentUser.id);
+            
+            socket.on('user online', (userId) => {
+                onlineUsers.add(userId);
+                if (currentTab === 'friends') loadCurrentTab();
+            });
+            
+            socket.on('user offline', (userId) => {
+                onlineUsers.delete(userId);
+                if (currentTab === 'friends') loadCurrentTab();
+            });
+            
+            socket.on('friend_request', () => {
+                if (currentTab === 'requests') loadCurrentTab();
+                // Показываем уведомление
+                if (Notification.permission === 'granted') {
+                    new Notification('Новая заявка в друзья', {
+                        body: 'Кто-то хочет добавить вас в друзья',
+                        icon: '/icons/Kryazh.png'
+                    });
+                }
+            });
+            
+            socket.on('friend_accepted', () => {
+                if (currentTab === 'friends') loadCurrentTab();
+                if (currentTab === 'outgoing') loadCurrentTab();
+            });
+            
+            loadCurrentTab();
+        }
+        
+        init();
+    </script>
+</body>
+</html>

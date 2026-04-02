@@ -982,6 +982,267 @@ app.delete('/api/admin/messages/:messageId', requireAdmin, (req, res) => {
     }
 });
 
+// ============= ПОСТЫ И ЛЕНТА НОВОСТЕЙ =============
+
+/**
+ * Создать пост в канале
+ * POST /api/channels/:id/posts
+ */
+app.post('/api/channels/:id/posts', requireAuth, (req, res) => {
+    const channelId = parseInt(req.params.id);
+    const { content, mediaUrl } = req.body;
+    const userId = req.session.userId;
+    
+    console.log(`📝 Создание поста в канале ${channelId} пользователем ${userId}`);
+    
+    try {
+        // 1. Проверяем, существует ли канал
+        const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(channelId);
+        if (!chat) {
+            return res.status(404).json({ error: 'Канал не найден' });
+        }
+        
+        // 2. Проверяем, является ли чат каналом
+        if (chat.type !== 'channel') {
+            return res.status(403).json({ error: 'Это не канал. Посты можно создавать только в каналах.' });
+        }
+        
+        // 3. Проверяем права (только создатель канала или админ)
+        const isCreator = chat.creator_id === userId;
+        const isAdmin = req.session.role === 'admin';
+        
+        if (!isCreator && !isAdmin) {
+            return res.status(403).json({ error: 'Только создатель канала может создавать посты' });
+        }
+        
+        // 4. Проверяем текст поста
+        if (!content || content.trim() === '') {
+            return res.status(400).json({ error: 'Текст поста не может быть пустым' });
+        }
+        
+        // 5. Создаём пост
+        const stmt = db.prepare(`
+            INSERT INTO channel_posts (channel_id, author_id, content, media_url)
+            VALUES (?, ?, ?, ?)
+        `);
+        const info = stmt.run(channelId, userId, content, mediaUrl || null);
+        
+        // 6. Получаем созданный пост с информацией об авторе
+        const post = db.prepare(`
+            SELECT p.*, u.username, u.avatar, c.name as channel_name
+            FROM channel_posts p
+            LEFT JOIN users u ON p.author_id = u.id
+            LEFT JOIN chats c ON p.channel_id = c.id
+            WHERE p.id = ?
+        `).get(info.lastInsertRowid);
+        
+        console.log(`✅ Пост создан! ID: ${post.id}, канал: ${post.channel_name}`);
+        
+        // ============= ЛОГИ ДЛЯ ОТЛАДКИ =============
+        console.log('🔍 ДЕТАЛЬНЫЙ ЛОГ:');
+        console.log('   post.id:', post.id);
+        console.log('   post.content:', post.content);
+        console.log('   post.channel_id:', post.channel_id);
+        
+        // 7. Получаем подписчиков канала
+        const participants = db.prepare('SELECT user_id FROM chat_participants WHERE chat_id = ?').all(channelId);
+        console.log(`   Участников канала: ${participants.length}`);
+        console.log('   userSessions:', Array.from(userSessions.entries()));
+        
+        // 8. Отправляем уведомление подписчикам канала через Socket.IO
+        participants.forEach(participant => {
+            const socketId = userSessions.get(participant.user_id);
+            console.log(`   → Пользователь ${participant.user_id}, socketId: ${socketId}`);
+            if (socketId) {
+                io.to(socketId).emit('new_post', post);
+                console.log(`   ✅ Событие отправлено пользователю ${participant.user_id}`);
+            } else {
+                console.log(`   ❌ НЕТ socketId для пользователя ${participant.user_id}`);
+            }
+        });
+        
+        res.status(201).json(post);
+        
+    } catch (error) {
+        console.error('❌ Ошибка создания поста:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Получить ленту новостей пользователя
+ * GET /api/feed?limit=20&offset=0
+ */
+
+
+/**
+ * ПОЛУЧИТЬ ЛЕНТУ (с лайками)
+ * GET /api/feed
+ */
+app.get('/api/feed', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    try {
+        // 1. Получаем посты из каналов, на которые подписан пользователь
+        const channelPosts = db.prepare(`
+            SELECT 
+                p.id,
+                p.content,
+                p.media_url,
+                p.created_at,
+                p.author_id,
+                u.username as author_name,
+                u.avatar as author_avatar,
+                c.name as source_name,
+                c.id as source_id,
+                'channel' as source_type,
+                (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+                (SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = ?) as user_liked
+            FROM channel_posts p
+            INNER JOIN chats c ON p.channel_id = c.id
+            INNER JOIN chat_participants cp ON c.id = cp.chat_id
+            LEFT JOIN users u ON p.author_id = u.id
+            WHERE cp.user_id = ? AND c.type = 'channel'
+            ORDER BY p.created_at DESC
+        `).all(userId, userId);
+        
+        // 2. Получаем статусы друзей (если есть таблица friend_posts)
+        let friendPosts = [];
+        try {
+            friendPosts = db.prepare(`
+                SELECT 
+                    fp.id,
+                    fp.content,
+                    fp.media_url,
+                    fp.created_at,
+                    fp.user_id as author_id,
+                    u.username as author_name,
+                    u.avatar as author_avatar,
+                    u.username as source_name,
+                    u.id as source_id,
+                    'friend' as source_type,
+                    (SELECT COUNT(*) FROM post_likes WHERE post_id = fp.id) as likes_count,
+                    (SELECT 1 FROM post_likes WHERE post_id = fp.id AND user_id = ?) as user_liked
+                FROM friend_posts fp
+                JOIN users u ON fp.user_id = u.id
+                WHERE fp.user_id IN (
+                    SELECT 
+                        CASE 
+                            WHEN user_id = ? THEN friend_id 
+                            WHEN friend_id = ? THEN user_id 
+                        END as friend_id
+                    FROM friends 
+                    WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+                )
+                ORDER BY fp.created_at DESC
+            `).all(userId, userId, userId, userId, userId);
+        } catch(e) {
+            // Таблицы friend_posts может не быть - игнорируем
+            console.log('friend_posts не найдена');
+        }
+        
+        // 3. Объединяем все посты
+        let allPosts = [...channelPosts, ...friendPosts];
+        
+        // 4. Сортируем по дате (новые сверху)
+        allPosts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        // 5. Пагинация
+        const paginatedPosts = allPosts.slice(offset, offset + limit);
+        
+        // 6. Форматируем для отправки
+        const formattedPosts = paginatedPosts.map(post => ({
+            ...post,
+            user_liked: post.user_liked === 1,
+            likes_count: post.likes_count || 0
+        }));
+        
+        res.json(formattedPosts);
+        
+    } catch (error) {
+        console.error('Ошибка получения ленты:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Удалить пост
+ * DELETE /api/posts/:id
+ */
+app.delete('/api/posts/:id', requireAuth, (req, res) => {
+    const postId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    const isAdmin = req.session.role === 'admin';
+    
+    console.log(`🗑️ Удаление поста ${postId} пользователем ${userId}`);
+    
+    try {
+        // Получаем пост
+        const post = db.prepare(`
+            SELECT p.*, c.creator_id as channel_creator
+            FROM channel_posts p
+            JOIN chats c ON p.channel_id = c.id
+            WHERE p.id = ?
+        `).get(postId);
+        
+        if (!post) {
+            return res.status(404).json({ error: 'Пост не найден' });
+        }
+        
+        // Проверяем права: автор поста, создатель канала или админ
+        const isAuthor = post.author_id === userId;
+        const isChannelCreator = post.channel_creator === userId;
+        
+        if (isAuthor || isChannelCreator || isAdmin) {
+            db.prepare('DELETE FROM channel_posts WHERE id = ?').run(postId);
+            console.log(`✅ Пост ${postId} удалён`);
+            res.json({ success: true });
+        } else {
+            console.log(`❌ Нет прав на удаление поста ${postId}`);
+            res.status(403).json({ error: 'У вас нет прав на удаление этого поста' });
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка удаления поста:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Получить один пост по ID (для просмотра)
+ * GET /api/posts/:id
+ */
+app.get('/api/posts/:id', requireAuth, (req, res) => {
+    const postId = parseInt(req.params.id);
+    
+    try {
+        const post = db.prepare(`
+            SELECT 
+                p.*,
+                u.username,
+                u.avatar as author_avatar,
+                c.name as channel_name,
+                c.avatar as channel_avatar
+            FROM channel_posts p
+            LEFT JOIN users u ON p.author_id = u.id
+            LEFT JOIN chats c ON p.channel_id = c.id
+            WHERE p.id = ?
+        `).get(postId);
+        
+        if (!post) {
+            return res.status(404).json({ error: 'Пост не найден' });
+        }
+        
+        res.json(post);
+        
+    } catch (error) {
+        console.error('❌ Ошибка получения поста:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
 // Отдаём публичный ключ для клиента
 app.get('/api/push/public-key', (req, res) => {
     res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || null });
@@ -1346,5 +1607,768 @@ setTimeout(() => {
         }
     } catch(e) {}
 }, 5000);
+
+// ============================================
+// ========== НОВЫЕ МАРШРУТЫ ==========
+// ============================================
+
+/**
+ * ПОИСК КАНАЛОВ И ГРУПП
+ * GET /api/channels/search?q=запрос
+ */
+app.get('/api/channels/search', requireAuth, (req, res) => {
+    const query = req.query.q;
+    
+    // Если запрос короче 2 символов - возвращаем пустой результат
+    if (!query || query.length < 2) {
+        return res.json([]);
+    }
+    
+    try {
+        // Ищем каналы и группы по названию
+        const channels = db.prepare(`
+            SELECT 
+                c.id,
+                c.name,
+                c.type,
+                c.description,
+                c.avatar,
+                c.creator_id,
+                u.username as creator_name,
+                (SELECT COUNT(*) FROM chat_participants WHERE chat_id = c.id) as members_count,
+                (SELECT 1 FROM chat_participants WHERE chat_id = c.id AND user_id = ?) as is_member
+            FROM chats c
+            LEFT JOIN users u ON c.creator_id = u.id
+            WHERE (c.type = 'channel' OR c.type = 'group')
+              AND c.name LIKE ?
+            ORDER BY members_count DESC
+            LIMIT 30
+        `).all(req.session.userId, `%${query}%`);
+        
+        res.json(channels);
+    } catch (error) {
+        console.error('Ошибка поиска каналов:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+
+/**
+ * ПОЛУЧИТЬ ПОСТЫ КАНАЛА
+ * GET /api/channels/:id/posts
+ */
+app.get('/api/channels/:id/posts', requireAuth, (req, res) => {
+    const channelId = parseInt(req.params.id);
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    try {
+        // Проверяем, существует ли канал
+        const chat = db.prepare('SELECT * FROM chats WHERE id = ? AND type = ?').get(channelId, 'channel');
+        if (!chat) {
+            return res.status(404).json({ error: 'Канал не найден' });
+        }
+        
+        // Получаем посты канала
+        const posts = db.prepare(`
+            SELECT 
+                p.*,
+                u.username,
+                u.avatar as avatar_url
+            FROM channel_posts p
+            LEFT JOIN users u ON p.author_id = u.id
+            WHERE p.channel_id = ?
+            ORDER BY p.created_at DESC
+            LIMIT ? OFFSET ?
+        `).all(channelId, limit, offset);
+        
+        res.json(posts);
+        
+    } catch (error) {
+        console.error('Ошибка получения постов канала:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+/**
+ * ИНФОРМАЦИЯ О КАНАЛЕ
+ * GET /api/channels/:id/info
+ */
+app.get('/api/channels/:id/info', requireAuth, (req, res) => {
+    const channelId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    
+    try {
+        const channel = db.prepare(`
+            SELECT 
+                c.*,
+                u.username as creator_name,
+                (SELECT COUNT(*) FROM chat_participants WHERE chat_id = c.id) as members_count,
+                (SELECT 1 FROM chat_participants WHERE chat_id = c.id AND user_id = ?) as is_member
+            FROM chats c
+            LEFT JOIN users u ON c.creator_id = u.id
+            WHERE c.id = ? AND (c.type = 'channel' OR c.type = 'group')
+        `).get(userId, channelId);
+        
+        if (!channel) {
+            return res.status(404).json({ error: 'Канал не найден' });
+        }
+        
+        res.json(channel);
+    } catch (error) {
+        console.error('Ошибка получения информации о канале:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ПОДПИСАТЬСЯ НА КАНАЛ
+ * POST /api/channels/:id/subscribe
+ */
+app.post('/api/channels/:id/subscribe', requireAuth, (req, res) => {
+    const channelId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    
+    try {
+        const chat = db.getChatById(channelId);
+        if (!chat || (chat.type !== 'channel' && chat.type !== 'group')) {
+            return res.status(404).json({ error: 'Канал не найден' });
+        }
+        
+        // Проверяем, не подписан ли уже
+        const existing = db.prepare('SELECT 1 FROM chat_participants WHERE chat_id = ? AND user_id = ?').get(channelId, userId);
+        if (existing) {
+            return res.status(400).json({ error: 'Вы уже подписаны' });
+        }
+        
+        // Добавляем подписчика
+        db.prepare('INSERT INTO chat_participants (chat_id, user_id, role) VALUES (?, ?, ?)').run(channelId, userId, 'member');
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Ошибка подписки:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ОТПИСАТЬСЯ ОТ КАНАЛА
+ * DELETE /api/channels/:id/subscribe
+ */
+app.delete('/api/channels/:id/subscribe', requireAuth, (req, res) => {
+    const channelId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    
+    try {
+        const chat = db.getChatById(channelId);
+        if (!chat) {
+            return res.status(404).json({ error: 'Канал не найден' });
+        }
+        
+        // Нельзя отписаться, если вы создатель
+        if (chat.creator_id === userId) {
+            return res.status(400).json({ error: 'Создатель не может отписаться от своего канала' });
+        }
+        
+        // Удаляем подписчика
+        const result = db.prepare('DELETE FROM chat_participants WHERE chat_id = ? AND user_id = ?').run(channelId, userId);
+        
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Вы не подписаны на этот канал' });
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Ошибка отписки:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ
+ * GET /api/users/:id
+ */
+app.get('/api/users/:id', requireAuth, (req, res) => {
+    const userId = parseInt(req.params.id);
+    
+    try {
+        const user = db.prepare('SELECT id, username, avatar, role, created_at FROM users WHERE id = ?').get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * КАНАЛЫ И ГРУППЫ ПОЛЬЗОВАТЕЛЯ
+ * GET /api/users/:id/channels
+ */
+app.get('/api/users/:id/channels', requireAuth, (req, res) => {
+    const userId = parseInt(req.params.id);
+    
+    try {
+        const channels = db.prepare(`
+            SELECT c.id, c.name, c.type, c.description, c.avatar,
+                   (SELECT COUNT(*) FROM chat_participants WHERE chat_id = c.id) as members_count
+            FROM chats c
+            JOIN chat_participants cp ON c.id = cp.chat_id
+            WHERE cp.user_id = ? AND (c.type = 'channel' OR c.type = 'group')
+            ORDER BY c.created_at DESC
+        `).all(userId);
+        
+        res.json(channels);
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// ============= СИСТЕМА ДРУЗЕЙ =============
+
+/**
+ * Отправить заявку в друзья
+ * POST /api/friends/request/:userId
+ */
+app.post('/api/friends/request/:userId', requireAuth, (req, res) => {
+    const fromUserId = req.session.userId;
+    const toUserId = parseInt(req.params.userId);
+    
+    if (fromUserId === toUserId) {
+        return res.status(400).json({ error: 'Нельзя добавить себя в друзья' });
+    }
+    
+    try {
+        // Проверяем, существует ли пользователь
+        const user = db.prepare('SELECT id FROM users WHERE id = ?').get(toUserId);
+        if (!user) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        
+        // Проверяем, нет ли уже заявки или дружбы
+        const existing = db.prepare(`
+            SELECT * FROM friends 
+            WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+        `).get(fromUserId, toUserId, toUserId, fromUserId);
+        
+        if (existing) {
+            if (existing.status === 'accepted') {
+                return res.status(400).json({ error: 'Вы уже друзья' });
+            }
+            if (existing.status === 'pending') {
+                return res.status(400).json({ error: 'Заявка уже отправлена' });
+            }
+        }
+        
+        // Создаём заявку
+        db.prepare('INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)').run(fromUserId, toUserId, 'pending');
+        
+        // Отправляем уведомление через Socket.IO
+        const targetSocket = userSessions.get(toUserId);
+        if (targetSocket) {
+            io.to(targetSocket).emit('friend_request', {
+                from: fromUserId,
+                fromName: req.session.username
+            });
+        }
+        
+        res.json({ success: true, message: 'Заявка отправлена' });
+        
+    } catch (error) {
+        console.error('Ошибка отправки заявки:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Принять заявку в друзья
+ * POST /api/friends/accept/:userId
+ */
+app.post('/api/friends/accept/:userId', requireAuth, (req, res) => {
+    const currentUserId = req.session.userId;
+    const fromUserId = parseInt(req.params.userId);
+    
+    try {
+        const result = db.prepare(`
+            UPDATE friends 
+            SET status = 'accepted', updated_at = CURRENT_TIMESTAMP 
+            WHERE user_id = ? AND friend_id = ? AND status = 'pending'
+        `).run(fromUserId, currentUserId);
+        
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Заявка не найдена' });
+        }
+        
+        // Уведомляем отправителя
+        const targetSocket = userSessions.get(fromUserId);
+        if (targetSocket) {
+            io.to(targetSocket).emit('friend_accepted', {
+                from: currentUserId,
+                fromName: req.session.username
+            });
+        }
+        
+        res.json({ success: true });
+        
+    } catch (error) {
+        console.error('Ошибка принятия заявки:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Отклонить заявку
+ * DELETE /api/friends/reject/:userId
+ */
+app.delete('/api/friends/reject/:userId', requireAuth, (req, res) => {
+    const currentUserId = req.session.userId;
+    const fromUserId = parseInt(req.params.userId);
+    
+    try {
+        const result = db.prepare(`
+            DELETE FROM friends 
+            WHERE user_id = ? AND friend_id = ? AND status = 'pending'
+        `).run(fromUserId, currentUserId);
+        
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Заявка не найдена' });
+        }
+        
+        res.json({ success: true });
+        
+    } catch (error) {
+        console.error('Ошибка отклонения заявки:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Удалить из друзей
+ * DELETE /api/friends/remove/:userId
+ */
+app.delete('/api/friends/remove/:userId', requireAuth, (req, res) => {
+    const currentUserId = req.session.userId;
+    const friendId = parseInt(req.params.userId);
+    
+    try {
+        const result = db.prepare(`
+            DELETE FROM friends 
+            WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+        `).run(currentUserId, friendId, friendId, currentUserId);
+        
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Друг не найден' });
+        }
+        
+        res.json({ success: true });
+        
+    } catch (error) {
+        console.error('Ошибка удаления друга:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Получить список друзей
+ * GET /api/friends
+ */
+app.get('/api/friends', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    
+    try {
+        const friends = db.prepare(`
+            SELECT u.id, u.username, u.avatar, u.online, f.created_at as since
+            FROM friends f
+            JOIN users u ON (f.user_id = ? AND f.friend_id = u.id) OR (f.friend_id = ? AND f.user_id = u.id)
+            WHERE f.status = 'accepted' AND u.id != ?
+        `).all(userId, userId, userId);
+        
+        res.json(friends);
+        
+    } catch (error) {
+        console.error('Ошибка получения списка друзей:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Получить входящие заявки
+ * GET /api/friends/requests
+ */
+app.get('/api/friends/requests', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    
+    try {
+        const requests = db.prepare(`
+            SELECT u.id, u.username, u.avatar, f.created_at
+            FROM friends f
+            JOIN users u ON f.user_id = u.id
+            WHERE f.friend_id = ? AND f.status = 'pending'
+            ORDER BY f.created_at DESC
+        `).all(userId);
+        
+        res.json(requests);
+        
+    } catch (error) {
+        console.error('Ошибка получения заявок:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Получить исходящие заявки
+ * GET /api/friends/outgoing
+ */
+app.get('/api/friends/outgoing', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    
+    try {
+        const outgoing = db.prepare(`
+            SELECT u.id, u.username, u.avatar, f.created_at
+            FROM friends f
+            JOIN users u ON f.friend_id = u.id
+            WHERE f.user_id = ? AND f.status = 'pending'
+            ORDER BY f.created_at DESC
+        `).all(userId);
+        
+        res.json(outgoing);
+        
+    } catch (error) {
+        console.error('Ошибка получения исходящих заявок:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Проверить статус дружбы с пользователем
+ * GET /api/friends/status/:userId
+ */
+app.get('/api/friends/status/:userId', requireAuth, (req, res) => {
+    const currentUserId = req.session.userId;
+    const targetUserId = parseInt(req.params.userId);
+    
+    try {
+        const relation = db.prepare(`
+            SELECT status FROM friends 
+            WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+        `).get(currentUserId, targetUserId, targetUserId, currentUserId);
+        
+        let status = 'none';
+        if (relation) {
+            status = relation.status;
+        }
+        
+        res.json({ status });
+        
+    } catch (error) {
+        console.error('Ошибка проверки статуса:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// ============= СТАТУСЫ ДРУЗЕЙ =============
+
+/**
+ * Создать статус
+ * POST /api/friends/status
+ */
+app.post('/api/friends/status', requireAuth, (req, res) => {
+    const { content, mediaUrl } = req.body;
+    const userId = req.session.userId;
+    
+    if (!content || content.trim() === '') {
+        return res.status(400).json({ error: 'Текст статуса не может быть пустым' });
+    }
+    
+    if (content.length > 500) {
+        return res.status(400).json({ error: 'Статус не может быть длиннее 500 символов' });
+    }
+    
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO friend_posts (user_id, content, media_url)
+            VALUES (?, ?, ?)
+        `);
+        const info = stmt.run(userId, content, mediaUrl || null);
+        
+        const post = db.prepare(`
+            SELECT fp.*, u.username, u.avatar
+            FROM friend_posts fp
+            JOIN users u ON fp.user_id = u.id
+            WHERE fp.id = ?
+        `).get(info.lastInsertRowid);
+        
+        // Отправляем уведомление всем друзьям
+        const friends = db.prepare(`
+            SELECT user_id FROM friends 
+            WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+        `).all(userId, userId);
+        
+        const friendIds = new Set();
+        friends.forEach(f => {
+            if (f.user_id === userId) {
+                // Нужно найти friend_id
+                const friend = db.prepare('SELECT friend_id FROM friends WHERE user_id = ? AND friend_id != ?').get(userId, userId);
+                if (friend) friendIds.add(friend.friend_id);
+            } else {
+                friendIds.add(f.user_id);
+            }
+        });
+        
+        // Альтернативный способ получить друзей
+        const allFriends = db.prepare(`
+            SELECT 
+                CASE 
+                    WHEN user_id = ? THEN friend_id 
+                    WHEN friend_id = ? THEN user_id 
+                END as friend_id
+            FROM friends 
+            WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+        `).all(userId, userId, userId, userId);
+        
+        allFriends.forEach(f => {
+            if (f.friend_id && f.friend_id !== userId) {
+                const socketId = userSessions.get(f.friend_id);
+                if (socketId) {
+                    io.to(socketId).emit('friend_status', post);
+                }
+            }
+        });
+        
+        res.status(201).json(post);
+        
+    } catch (error) {
+        console.error('Ошибка создания статуса:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Получить ленту друзей
+ * GET /api/friends/feed
+ */
+app.get('/api/friends/feed', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    try {
+        // Получаем статусы друзей
+        const feed = db.prepare(`
+            SELECT 
+                fp.*,
+                u.username,
+                u.avatar,
+                'friend_status' as type
+            FROM friend_posts fp
+            JOIN users u ON fp.user_id = u.id
+            WHERE fp.user_id IN (
+                SELECT 
+                    CASE 
+                        WHEN user_id = ? THEN friend_id 
+                        WHEN friend_id = ? THEN user_id 
+                    END as friend_id
+                FROM friends 
+                WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+            )
+            ORDER BY fp.created_at DESC
+            LIMIT ? OFFSET ?
+        `).all(userId, userId, userId, userId, limit, offset);
+        
+        res.json(feed);
+        
+    } catch (error) {
+        console.error('Ошибка получения ленты друзей:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// ============= ЛАЙКИ К ПОСТАМ И РЕПУТАЦИЯ =============
+
+/**
+ * ПОСТАВИТЬ/УБРАТЬ ЛАЙК
+ * POST /api/posts/:id/like
+ */
+app.post('/api/posts/:id/like', requireAuth, (req, res) => {
+    const postId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    
+    try {
+        // 1. Проверяем, существует ли пост
+        const post = db.prepare('SELECT * FROM channel_posts WHERE id = ?').get(postId);
+        if (!post) {
+            return res.status(404).json({ error: 'Пост не найден' });
+        }
+        
+        // 2. Проверяем, есть ли уже лайк от этого пользователя
+        const existingLike = db.prepare('SELECT * FROM post_likes WHERE post_id = ? AND user_id = ?').get(postId, userId);
+        
+        let action = 'removed';
+        let likesCount = 0;
+        let userLiked = false;
+        
+        if (existingLike) {
+            // === УБИРАЕМ ЛАЙК ===
+            // Удаляем запись о лайке
+            db.prepare('DELETE FROM post_likes WHERE post_id = ? AND user_id = ?').run(postId, userId);
+            
+            // Уменьшаем репутацию автора поста (на 1)
+            const repExists = db.prepare('SELECT * FROM user_reputation WHERE user_id = ?').get(post.author_id);
+            if (repExists && repExists.points > 0) {
+                db.prepare('UPDATE user_reputation SET points = points - 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(post.author_id);
+            }
+            
+            // Удаляем из истории репутации
+            db.prepare('DELETE FROM reputation_history WHERE from_user_id = ? AND to_user_id = ? AND post_id = ?').run(userId, post.author_id, postId);
+            
+            action = 'removed';
+        } else {
+            // === СТАВИМ ЛАЙК ===
+            // Добавляем запись о лайке
+            db.prepare('INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)').run(postId, userId);
+            
+            // Увеличиваем репутацию автора поста (на 1)
+            const repExists = db.prepare('SELECT * FROM user_reputation WHERE user_id = ?').get(post.author_id);
+            if (repExists) {
+                db.prepare('UPDATE user_reputation SET points = points + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(post.author_id);
+            } else {
+                db.prepare('INSERT INTO user_reputation (user_id, points) VALUES (?, 1)').run(post.author_id);
+            }
+            
+            // Добавляем в историю репутации
+            db.prepare(`
+                INSERT INTO reputation_history (from_user_id, to_user_id, post_id, points) 
+                VALUES (?, ?, ?, 1)
+            `).run(userId, post.author_id, postId);
+            
+            action = 'added';
+        }
+        
+        // 3. Получаем обновлённое количество лайков
+        const likesResult = db.prepare('SELECT COUNT(*) as count FROM post_likes WHERE post_id = ?').get(postId);
+        likesCount = likesResult.count;
+        
+        // 4. Проверяем, лайкнул ли текущий пользователь
+        const userLikedResult = db.prepare('SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?').get(postId, userId);
+        userLiked = userLikedResult !== undefined;
+        
+        // 5. Получаем обновлённую репутацию автора
+        const repResult = db.prepare('SELECT points FROM user_reputation WHERE user_id = ?').get(post.author_id);
+        const authorReputation = repResult ? repResult.points : 0;
+        
+        // 6. Отправляем ответ
+        res.json({ 
+            success: true, 
+            action: action,
+            likesCount: likesCount,
+            userLiked: userLiked,
+            authorReputation: authorReputation
+        });
+        
+    } catch (error) {
+        console.error('Ошибка при лайке:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ПОЛУЧИТЬ КОЛИЧЕСТВО ЛАЙКОВ ПОСТА
+ * GET /api/posts/:id/likes
+ */
+app.get('/api/posts/:id/likes', requireAuth, (req, res) => {
+    const postId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    
+    try {
+        const likesCount = db.prepare('SELECT COUNT(*) as count FROM post_likes WHERE post_id = ?').get(postId).count;
+        const userLiked = db.prepare('SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?').get(postId, userId) !== undefined;
+        
+        res.json({ likesCount, userLiked });
+    } catch (error) {
+        console.error('Ошибка получения лайков:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ПОЛУЧИТЬ РЕПУТАЦИЮ ПОЛЬЗОВАТЕЛЯ
+ * GET /api/users/:id/reputation
+ */
+app.get('/api/users/:id/reputation', requireAuth, (req, res) => {
+    const targetUserId = parseInt(req.params.id);
+    
+    try {
+        // Получаем количество очков репутации
+        const reputation = db.prepare('SELECT points FROM user_reputation WHERE user_id = ?').get(targetUserId);
+        const points = reputation ? reputation.points : 0;
+        
+        // Получаем последних 10 человек, кто поставил репутацию
+        const recent = db.prepare(`
+            SELECT 
+                rh.*, 
+                u.username, 
+                u.avatar,
+                p.content as post_preview
+            FROM reputation_history rh
+            JOIN users u ON rh.from_user_id = u.id
+            LEFT JOIN channel_posts p ON rh.post_id = p.id
+            WHERE rh.to_user_id = ?
+            ORDER BY rh.created_at DESC
+            LIMIT 10
+        `).all(targetUserId);
+        
+        res.json({ points, recent });
+    } catch (error) {
+        console.error('Ошибка получения репутации:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// Статистика постов для админки
+app.get('/api/admin/posts/stats', requireAdmin, (req, res) => {
+    const totalPosts = db.prepare('SELECT COUNT(*) as count FROM channel_posts').get();
+    const totalLikes = db.prepare('SELECT COUNT(*) as count FROM post_likes').get();
+    res.json({ totalPosts: totalPosts.count, totalLikes: totalLikes.count });
+});
+
+// Список всех постов для админки
+app.get('/api/admin/posts', requireAdmin, (req, res) => {
+    const posts = db.prepare(`
+        SELECT p.*, c.name as channel_name, u.username as author_name,
+               (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count
+        FROM channel_posts p
+        LEFT JOIN chats c ON p.channel_id = c.id
+        LEFT JOIN users u ON p.author_id = u.id
+        ORDER BY p.id DESC
+        LIMIT 200
+    `).all();
+    res.json(posts);
+});
+
+// Удалить пост из админки
+app.delete('/api/admin/posts/:postId', requireAdmin, (req, res) => {
+    const postId = req.params.postId;
+    try {
+        db.prepare('DELETE FROM post_likes WHERE post_id = ?').run(postId);
+        db.prepare('DELETE FROM reputation_history WHERE post_id = ?').run(postId);
+        db.prepare('DELETE FROM channel_posts WHERE id = ?').run(postId);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Список репутации для админки
+app.get('/api/admin/reputation', requireAdmin, (req, res) => {
+    const users = db.prepare(`
+        SELECT u.id, u.username, 
+               COALESCE(ur.points, 0) as reputation,
+               (SELECT COUNT(*) FROM post_likes pl JOIN channel_posts cp ON pl.post_id = cp.id WHERE cp.author_id = u.id) as received_likes
+        FROM users u
+        LEFT JOIN user_reputation ur ON u.id = ur.user_id
+        ORDER BY reputation DESC
+    `).all();
+    res.json(users);
+});
 
 server.listen(port, () => console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`));

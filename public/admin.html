@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kryazh Admin Panel</title>
     <style>
         * {
@@ -11,10 +11,33 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --border: #e0e0e0;
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --primary: #764ba2;
+            --primary-dark: #5a3a7a;
+            --danger: #e53935;
+            --danger-dark: #c62828;
+            --warning: #ff9800;
+            --success: #4caf50;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --surface: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-secondary: #aaaaaa;
+            --primary: #9b6fc4;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
-            color: #1a1a1a;
+            background: var(--bg);
+            color: var(--text);
         }
 
         /* Админ-контейнер */
@@ -62,7 +85,7 @@
         }
 
         .admin-sidebar nav a.active {
-            background: #764ba2;
+            background: var(--primary);
             color: white;
         }
 
@@ -75,7 +98,7 @@
 
         /* Шапка */
         .admin-header {
-            background: white;
+            background: var(--surface);
             padding: 20px 30px;
             border-radius: 16px;
             margin-bottom: 30px;
@@ -87,7 +110,7 @@
 
         .admin-header h1 {
             font-size: 24px;
-            color: #1a1a2e;
+            color: var(--text);
         }
 
         .admin-user {
@@ -97,7 +120,7 @@
         }
 
         .logout-btn {
-            background: #e53935;
+            background: var(--danger);
             color: white;
             border: none;
             padding: 8px 20px;
@@ -108,19 +131,19 @@
         }
 
         .logout-btn:hover {
-            background: #c62828;
+            background: var(--danger-dark);
         }
 
         /* Карточки статистики */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
 
         .stat-card {
-            background: white;
+            background: var(--surface);
             padding: 24px;
             border-radius: 16px;
             text-align: center;
@@ -135,18 +158,18 @@
         .stat-number {
             font-size: 48px;
             font-weight: bold;
-            color: #764ba2;
+            color: var(--primary);
         }
 
         .stat-label {
-            color: #666;
+            color: var(--text-secondary);
             margin-top: 8px;
             font-size: 14px;
         }
 
         /* Таблицы */
         .table-container {
-            background: white;
+            background: var(--surface);
             border-radius: 16px;
             overflow: auto;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -160,20 +183,20 @@
         th, td {
             padding: 14px 16px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border);
         }
 
         th {
-            background: #f8f9fa;
+            background: var(--bg);
             font-weight: 600;
-            color: #333;
+            color: var(--text-secondary);
             font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         tr:hover {
-            background: #f8f9fa;
+            background: var(--bg);
         }
 
         /* Бейджи */
@@ -186,21 +209,26 @@
         }
 
         .badge-admin {
-            background: #764ba2;
+            background: var(--primary);
             color: white;
         }
 
         .badge-user {
-            background: #e0e0e0;
-            color: #333;
+            background: var(--border);
+            color: var(--text);
         }
 
-        .badge-online {
-            background: #4caf50;
+        .badge-channel {
+            background: #ff9800;
             color: white;
         }
 
-        .badge-offline {
+        .badge-group {
+            background: #2196f3;
+            color: white;
+        }
+
+        .badge-private {
             background: #9e9e9e;
             color: white;
         }
@@ -217,30 +245,35 @@
         }
 
         .btn-primary {
-            background: #764ba2;
+            background: var(--primary);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #5a3a7a;
+            background: var(--primary-dark);
         }
 
         .btn-danger {
-            background: #e53935;
+            background: var(--danger);
             color: white;
         }
 
         .btn-danger:hover {
-            background: #c62828;
+            background: var(--danger-dark);
         }
 
         .btn-warning {
-            background: #ff9800;
+            background: var(--warning);
             color: white;
         }
 
         .btn-warning:hover {
             background: #f57c00;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 11px;
         }
 
         /* Секции */
@@ -255,7 +288,7 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: #666;
+            color: var(--text-secondary);
         }
 
         /* Поиск */
@@ -268,9 +301,11 @@
         .search-input {
             flex: 1;
             padding: 10px 16px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 14px;
+            background: var(--surface);
+            color: var(--text);
         }
 
         /* Модальное окно */
@@ -292,7 +327,7 @@
         }
 
         .modal-content {
-            background: white;
+            background: var(--surface);
             padding: 24px;
             border-radius: 16px;
             width: 90%;
@@ -303,12 +338,16 @@
             margin-bottom: 16px;
         }
 
-        .modal-content input, .modal-content textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+        /* Пост в таблице */
+        .post-preview {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .post-media-icon {
+            font-size: 16px;
         }
 
         /* Мобильная адаптация */
@@ -329,9 +368,14 @@
             }
             .admin-content {
                 margin-left: 80px;
+                padding: 16px;
             }
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
+            }
+            th, td {
+                padding: 10px 12px;
+                font-size: 12px;
             }
         }
     </style>
@@ -350,8 +394,14 @@
                 <a href="#" data-section="chats">
                     <span>💬</span> <span>Чаты</span>
                 </a>
+                <a href="#" data-section="posts">
+                    <span>📰</span> <span>Посты</span>
+                </a>
                 <a href="#" data-section="messages">
                     <span>📝</span> <span>Сообщения</span>
+                </a>
+                <a href="#" data-section="reputation">
+                    <span>⭐</span> <span>Репутация</span>
                 </a>
                 <a href="#" data-section="settings">
                     <span>⚙️</span> <span>Настройки</span>
@@ -380,8 +430,16 @@
                         <div class="stat-label">💬 Чатов</div>
                     </div>
                     <div class="stat-card">
+                        <div class="stat-number" id="statPosts">-</div>
+                        <div class="stat-label">📰 Постов</div>
+                    </div>
+                    <div class="stat-card">
                         <div class="stat-number" id="statMessages">-</div>
                         <div class="stat-label">📝 Сообщений</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statLikes">-</div>
+                        <div class="stat-label">❤️ Лайков</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="statOnline">-</div>
@@ -402,12 +460,13 @@
                                 <th>ID</th>
                                 <th>Имя</th>
                                 <th>Роль</th>
+                                <th>Репутация</th>
                                 <th>Дата регистрации</th>
                                 <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody id="usersTable">
-                            <tr><td colspan="5" class="loading">Загрузка...</td></tr>
+                            <tr><td colspan="6" class="loading">Загрузка...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -426,11 +485,37 @@
                                 <th>Название</th>
                                 <th>Тип</th>
                                 <th>Участников</th>
+                                <th>Постов</th>
                                 <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody id="chatsTable">
-                            <tr><td colspan="5" class="loading">Загрузка...</td></tr>
+                            <tr><td colspan="6" class="loading">Загрузка...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Посты -->
+            <div id="posts" class="section">
+                <div class="search-box">
+                    <input type="text" id="postSearch" class="search-input" placeholder="🔍 Поиск постов...">
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Канал</th>
+                                <th>Автор</th>
+                                <th>Содержание</th>
+                                <th>Лайков</th>
+                                <th>Дата</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="postsTable">
+                            <tr><td colspan="7" class="loading">Загрузка...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -460,6 +545,29 @@
                 </div>
             </div>
             
+            <!-- Репутация -->
+            <div id="reputation" class="section">
+                <div class="search-box">
+                    <input type="text" id="repSearch" class="search-input" placeholder="🔍 Поиск пользователя...">
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Пользователь</th>
+                                <th>⭐ Репутация</th>
+                                <th>Получено лайков</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reputationTable">
+                            <tr><td colspan="5" class="loading">Загрузка...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
             <!-- Настройки -->
             <div id="settings" class="section">
                 <div class="table-container">
@@ -472,7 +580,16 @@
                         </div>
                         <div style="margin: 20px 0;">
                             <label>
-                                <input type="checkbox" id="confirmDelete"> Подтверждение удаления
+                                <input type="checkbox" id="confirmDelete" checked> Подтверждение удаления
+                            </label>
+                        </div>
+                        <div style="margin: 20px 0;">
+                            <label>
+                                🌙 Тема оформления
+                                <select id="themeSelect" style="margin-left: 10px; padding: 5px 10px;">
+                                    <option value="light">Светлая</option>
+                                    <option value="dark">Тёмная</option>
+                                </select>
                             </label>
                         </div>
                         <button class="btn btn-primary" id="refreshBtn">🔄 Обновить всё</button>
@@ -494,10 +611,16 @@
         </div>
     </div>
     
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         let currentUser = null;
         let refreshInterval = null;
         let pendingAction = null;
+        let socket = null;
+        
+        // Тема
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
         
         // Проверка прав администратора
         async function checkAdmin() {
@@ -528,6 +651,14 @@
             document.getElementById('statChats').textContent = data.chats;
             document.getElementById('statMessages').textContent = data.messages;
             document.getElementById('statOnline').textContent = data.online;
+            
+            // Дополнительная статистика
+            const postsRes = await fetch('/api/admin/posts/stats');
+            if (postsRes.ok) {
+                const postsData = await postsRes.json();
+                document.getElementById('statPosts').textContent = postsData.totalPosts || 0;
+                document.getElementById('statLikes').textContent = postsData.totalLikes || 0;
+            }
         }
         
         // Загрузка пользователей
@@ -540,21 +671,29 @@
                 users = users.filter(u => u.username.toLowerCase().includes(search));
             }
             
+            // Загружаем репутацию для каждого пользователя
+            const usersWithRep = await Promise.all(users.map(async (u) => {
+                const repRes = await fetch(`/api/users/${u.id}/reputation`);
+                const repData = await repRes.json();
+                return { ...u, reputation: repData.points };
+            }));
+            
             const tbody = document.getElementById('usersTable');
-            if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">Нет пользователей</td></tr>';
+            if (usersWithRep.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">Нет пользователей</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = users.map(u => `
+            tbody.innerHTML = usersWithRep.map(u => `
                 <tr>
                     <td>${u.id}</td>
                     <td><strong>${escapeHtml(u.username)}</strong></td>
                     <td><span class="badge ${u.role === 'admin' ? 'badge-admin' : 'badge-user'}">${u.role === 'admin' ? '👑 Админ' : '👤 Пользователь'}</span></td>
+                    <td><span style="color: #ff9800;">⭐ ${u.reputation || 0}</span></td>
                     <td>${new Date(u.created_at).toLocaleDateString()}</td>
                     <td>
-                        ${u.role !== 'admin' ? `<button class="btn btn-warning" onclick="makeAdmin(${u.id})">👑 Сделать админом</button>` : ''}
-                        ${u.id !== currentUser.id ? `<button class="btn btn-danger" onclick="confirmDelete('user', ${u.id}, '${escapeHtml(u.username)}')">🗑️ Удалить</button>` : ''}
+                        ${u.role !== 'admin' ? `<button class="btn btn-warning btn-sm" onclick="makeAdmin(${u.id})">👑 Сделать админом</button>` : ''}
+                        ${u.id !== currentUser?.id ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete('user', ${u.id}, '${escapeHtml(u.username)}')">🗑️ Удалить</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -572,18 +711,61 @@
             
             const tbody = document.getElementById('chatsTable');
             if (chats.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">Нет чатов</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">Нет чатов</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = chats.map(c => `
+            tbody.innerHTML = chats.map(c => {
+                let typeBadge = '';
+                if (c.type === 'private') typeBadge = '<span class="badge badge-private">💬 Личный</span>';
+                else if (c.type === 'group') typeBadge = '<span class="badge badge-group">👥 Группа</span>';
+                else if (c.type === 'channel') typeBadge = '<span class="badge badge-channel">📢 Канал</span>';
+                
+                return `
+                    <tr>
+                        <td>${c.id}</td>
+                        <td>${escapeHtml(c.name || 'Личный чат')}</td>
+                        <td>${typeBadge}</td>
+                        <td>${c.participants_count || 0}</td>
+                        <td>${c.posts_count || '-'}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="confirmDelete('chat', ${c.id}, '${escapeHtml(c.name || 'Личный чат')}')">🗑️ Удалить</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Загрузка постов
+        async function loadPosts() {
+            const res = await fetch('/api/admin/posts');
+            let posts = await res.json();
+            
+            const search = document.getElementById('postSearch')?.value.toLowerCase() || '';
+            if (search) {
+                posts = posts.filter(p => 
+                    (p.content || '').toLowerCase().includes(search) || 
+                    (p.channel_name || '').toLowerCase().includes(search) ||
+                    (p.author_name || '').toLowerCase().includes(search)
+                );
+            }
+            
+            const tbody = document.getElementById('postsTable');
+            if (posts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет постов</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = posts.map(p => `
                 <tr>
-                    <td>${c.id}</td>
-                    <td>${escapeHtml(c.name || 'Личный чат')}</td>
-                    <td>${c.type === 'private' ? '💬 Личный' : c.type === 'group' ? '👥 Группа' : '📢 Канал'}</td>
-                    <td>${c.participants_count || 0}</td>
+                    <td>${p.id}</td>
+                    <td>${escapeHtml(p.channel_name || 'Канал')}</td>
+                    <td>${escapeHtml(p.author_name || '?')}</td>
+                    <td class="post-preview">${p.media_url ? '📷 ' : ''}${escapeHtml(p.content?.substring(0, 60) || '')}${p.content?.length > 60 ? '...' : ''}</td>
+                    <td>❤️ ${p.likes_count || 0}</td>
+                    <td style="white-space: nowrap;">${new Date(p.created_at).toLocaleString()}</td>
                     <td>
-                        <button class="btn btn-danger" onclick="confirmDelete('chat', ${c.id}, '${escapeHtml(c.name || 'Личный чат')}')">🗑️ Удалить</button>
+                        <button class="btn btn-danger btn-sm" onclick="confirmDelete('post', ${p.id})">🗑️ Удалить</button>
                     </td>
                 </tr>
             `).join('');
@@ -596,7 +778,10 @@
             
             const search = document.getElementById('messageSearch')?.value.toLowerCase() || '';
             if (search) {
-                messages = messages.filter(m => (m.content || '').toLowerCase().includes(search) || (m.username || '').toLowerCase().includes(search));
+                messages = messages.filter(m => 
+                    (m.content || '').toLowerCase().includes(search) || 
+                    (m.username || '').toLowerCase().includes(search)
+                );
             }
             
             const tbody = document.getElementById('messagesTable');
@@ -610,10 +795,39 @@
                     <td>${m.id}</td>
                     <td>${m.chat_id}</td>
                     <td>${escapeHtml(m.username || '?')}</td>
-                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(m.content?.substring(0, 50) || '📷 Фото' || '🎤 Голосовое')}</td>
+                    <td class="post-preview">${m.voice_url ? '🎤 Голосовое' : (m.image_url ? '📷 Фото' : escapeHtml(m.content?.substring(0, 50) || ''))}</td>
                     <td style="white-space: nowrap;">${new Date(m.created_at).toLocaleString()}</td>
                     <td>
-                        <button class="btn btn-danger" onclick="confirmDelete('message', ${m.id})">🗑️ Удалить</button>
+                        <button class="btn btn-danger btn-sm" onclick="confirmDelete('message', ${m.id})">🗑️ Удалить</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // Загрузка репутации
+        async function loadReputation() {
+            const res = await fetch('/api/admin/reputation');
+            let users = await res.json();
+            
+            const search = document.getElementById('repSearch')?.value.toLowerCase() || '';
+            if (search) {
+                users = users.filter(u => u.username.toLowerCase().includes(search));
+            }
+            
+            const tbody = document.getElementById('reputationTable');
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">Нет данных</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.id}</td>
+                    <td><strong>${escapeHtml(u.username)}</strong></td>
+                    <td><span style="color: #ff9800; font-size: 20px;">⭐ ${u.reputation || 0}</span></td>
+                    <td>❤️ ${u.received_likes || 0}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="window.location.href='/profile.html?id=${u.id}'">👤 Профиль</button>
                     </td>
                 </tr>
             `).join('');
@@ -633,12 +847,19 @@
         
         // Подтверждение удаления
         function confirmDelete(type, id, name = '') {
+            const confirmDeleteSetting = document.getElementById('confirmDelete')?.checked;
+            if (!confirmDeleteSetting) {
+                executeDeleteDirect(type, id);
+                return;
+            }
+            
             const modal = document.getElementById('confirmModal');
             const message = document.getElementById('confirmMessage');
             
             let text = '';
-            if (type === 'user') text = `Удалить пользователя "${name}"? Все его сообщения будут удалены!`;
+            if (type === 'user') text = `Удалить пользователя "${name}"? Все его сообщения и посты будут удалены!`;
             if (type === 'chat') text = `Удалить чат "${name}"? Все сообщения будут удалены!`;
+            if (type === 'post') text = `Удалить пост? Лайки и репутация будут пересчитаны.`;
             if (type === 'message') text = `Удалить сообщение?`;
             
             message.textContent = text;
@@ -646,28 +867,24 @@
             modal.classList.add('active');
         }
         
-        // Выполнение удаления
-        async function executeDelete() {
-            if (!pendingAction) return;
-            
-            const { type, id } = pendingAction;
+        async function executeDeleteDirect(type, id) {
             let url = '';
-            
             if (type === 'user') url = `/api/admin/users/${id}`;
             if (type === 'chat') url = `/api/admin/chats/${id}`;
+            if (type === 'post') url = `/api/admin/posts/${id}`;
             if (type === 'message') url = `/api/admin/messages/${id}`;
             
             const res = await fetch(url, { method: 'DELETE' });
             if (res.ok) {
-                alert('✅ Удалено');
-                if (type === 'user') loadUsers();
-                if (type === 'chat') loadChats();
-                if (type === 'message') loadMessages();
-                loadStats();
+                refreshAll();
             } else {
                 alert('❌ Ошибка удаления');
             }
-            
+        }
+        
+        async function executeDelete() {
+            if (!pendingAction) return;
+            await executeDeleteDirect(pendingAction.type, pendingAction.id);
             closeModal();
         }
         
@@ -685,10 +902,14 @@
         
         // Обновление всего
         function refreshAll() {
-            if (document.querySelector('#dashboard.section.active')) loadStats();
-            if (document.querySelector('#users.section.active')) loadUsers();
-            if (document.querySelector('#chats.section.active')) loadChats();
-            if (document.querySelector('#messages.section.active')) loadMessages();
+            const activeSection = document.querySelector('.section.active')?.id;
+            
+            if (activeSection === 'dashboard') loadStats();
+            if (activeSection === 'users') loadUsers();
+            if (activeSection === 'chats') loadChats();
+            if (activeSection === 'posts') loadPosts();
+            if (activeSection === 'messages') loadMessages();
+            if (activeSection === 'reputation') loadReputation();
         }
         
         // Навигация
@@ -707,7 +928,9 @@
                     dashboard: '📊 Дашборд',
                     users: '👥 Пользователи',
                     chats: '💬 Чаты',
+                    posts: '📰 Посты',
                     messages: '📝 Сообщения',
+                    reputation: '⭐ Репутация',
                     settings: '⚙️ Настройки'
                 };
                 document.getElementById('pageTitle').textContent = titles[section];
@@ -719,7 +942,9 @@
         // Поиск
         document.getElementById('userSearch')?.addEventListener('input', () => loadUsers());
         document.getElementById('chatSearch')?.addEventListener('input', () => loadChats());
+        document.getElementById('postSearch')?.addEventListener('input', () => loadPosts());
         document.getElementById('messageSearch')?.addEventListener('input', () => loadMessages());
+        document.getElementById('repSearch')?.addEventListener('input', () => loadReputation());
         
         // Автообновление
         document.getElementById('autoRefresh')?.addEventListener('change', (e) => {
@@ -731,9 +956,18 @@
         });
         
         document.getElementById('refreshBtn')?.addEventListener('click', refreshAll);
-        
         document.getElementById('confirmYes')?.addEventListener('click', executeDelete);
         document.getElementById('confirmNo')?.addEventListener('click', closeModal);
+        
+        // Тема
+        document.getElementById('themeSelect')?.addEventListener('change', (e) => {
+            const theme = e.target.value;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        });
+        if (document.getElementById('themeSelect')) {
+            document.getElementById('themeSelect').value = savedTheme;
+        }
         
         document.getElementById('logoutBtn').onclick = async () => {
             await fetch('/api/logout', { method: 'POST' });
@@ -745,7 +979,15 @@
             loadStats();
             loadUsers();
             loadChats();
+            loadPosts();
             loadMessages();
+            loadReputation();
+            
+            // WebSocket для уведомлений
+            socket = io();
+            socket.emit('auth', currentUser?.id);
+            socket.on('new_post', () => { if (document.getElementById('posts').classList.contains('active')) loadPosts(); });
+            socket.on('new_message', () => { if (document.getElementById('messages').classList.contains('active')) loadMessages(); });
         });
     </script>
 </body>

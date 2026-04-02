@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Профиль - Kryazh</title>
+    <style>
+
+            /* ============= ВСЕ ТЕМЫ ============= */
+        :root {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --border: #e0e0e0;
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --primary: #764ba2;
+            --primary-dark: #6a3d96;
+            --hover: #f0f0f0;
+            --shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --surface: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-secondary: #aaaaaa;
+            --primary: #9b6fc4;
+            --hover: #252525;
+            --shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        [data-theme="wild"] {
+            --bg: #2d3e2b;
+            --surface: #4a6e3a;
+            --border: #6a8e5a;
+            --text: #f5e6c4;
+            --text-secondary: #d4c4a4;
+            --primary: #c9a87b;
+            --hover: #5a7e4a;
+        }
+
+        [data-theme="barbie"] {
+            --bg: #ffd1dc;
+            --surface: #fff0f3;
+            --border: #ffb6c1;
+            --text: #c21e56;
+            --text-secondary: #e8436e;
+            --primary: #ff69b4;
+            --hover: #ffe4e9;
+        }
+
+        [data-theme="cyber"] {
+            --bg: #0a0a0f;
+            --surface: #15151f;
+            --border: #2a2a3a;
+            --text: #00ffff;
+            --text-secondary: #66ffff;
+            --primary: #ff00ff;
+            --hover: #1a1a2a;
+        }
+
+        [data-theme="ПАША"] {
+            --bg: #edeef0;
+            --surface: #ffffff;
+            --border: #d3d9de;
+            --text: #2c3e50;
+            --text-secondary: #6c7a89;
+            --primary: #5181b8;
+            --hover: #f0f2f5;
+        }
+
+        [data-theme="newhorizons"] {
+            --bg: #9fd3c7;
+            --surface: #fffef7;
+            --border: #e2dcc7;
+            --text: #5b6e4a;
+            --text-secondary: #8b9a6e;
+            --primary: #f7b05e;
+            --hover: #fff5e6;
+        }
+
+
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 12px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 24px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 14px;
+        }
+        
+        .reputation-block {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 16px;
+    margin: 16px 0;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.reputation-points {
+    font-size: 28px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.reputation-icon {
+    font-size: 32px;
+}
+
+.reputation-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.reputation-history {
+    margin-top: 16px;
+    text-align: left;
+    font-size: 13px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.reputation-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.reputation-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.reputation-name {
+    font-weight: 500;
+    flex: 1;
+}
+
+.reputation-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.reputation-points-small {
+    font-weight: bold;
+    color: var(--primary);
+}
+
+        .profile-card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 16px;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--primary);
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+            overflow: hidden;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .profile-role {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+
+        .profile-stats {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin: 20px 0;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 20px 0 12px;
+        }
+
+        .channel-item {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .channel-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .channel-info {
+            flex: 1;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .channel-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .friend-action-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .friend-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .friend-status.pending {
+            background: var(--warning, #ff9800);
+            color: white;
+        }
+
+        .friend-status.accepted {
+            background: var(--success);
+            color: white;
+        }
+
+        .loading, .empty {
+            text-align: center;
+            padding: 40px;
+            background: var(--surface);
+            border-radius: 16px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Назад к чатам</a>
+        <div id="content">
+            <div class="loading">⏳ Загрузка...</div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Применяем тему
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('id');
+        let currentUser = null;
+        let targetUser = null;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        // Проверка статуса дружбы
+        async function checkFriendStatus(targetUserId) {
+            try {
+                const res = await fetch(`/api/friends/status/${targetUserId}`, { 
+                    credentials: 'include' 
+                });
+                return await res.json();
+            } catch (err) {
+                console.error('Ошибка проверки статуса:', err);
+                return { status: 'none' };
+            }
+        }
+
+        // Отправить заявку в друзья
+        async function sendFriendRequest(targetUserId) {
+            try {
+                const res = await fetch(`/api/friends/request/${targetUserId}`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('Заявка отправлена!');
+                    loadProfile(); // Обновляем страницу
+                } else {
+                    alert(data.error || 'Ошибка');
+                }
+            } catch (err) {
+                alert('Ошибка соединения');
+            }
+        }
+
+        // Загрузка профиля
+        async function loadProfile() {
+            const container = document.getElementById('content');
+            
+            try {
+                // Получаем данные пользователя
+                let user;
+                if (userId) {
+                    const res = await fetch(`/api/users/${userId}`, { credentials: 'include' });
+                    if (!res.ok) throw new Error('Пользователь не найден');
+                    user = await res.json();
+                    targetUser = user;
+                } else {
+                    const res = await fetch('/api/me', { credentials: 'include' });
+                    user = await res.json();
+                    targetUser = user;
+                }
+                
+                // Получаем каналы пользователя
+                const channelsRes = await fetch(`/api/users/${user.id}/channels`, { credentials: 'include' });
+                const channels = await channelsRes.json();
+                
+                // Внутри функции loadProfile, после получения channels, добавь:
+
+// Получаем репутацию пользователя
+const repRes = await fetch(`/api/users/${user.id}/reputation`, { credentials: 'include' });
+const repData = await repRes.json();
+
+// Обновляем отображение репутации
+const repPointsSpan = document.getElementById('reputationPoints');
+if (repPointsSpan) {
+    repPointsSpan.textContent = repData.points;
+}
+
+// Показываем историю репутации
+const historyContainer = document.getElementById('reputationHistory');
+if (historyContainer) {
+    if (repData.recent && repData.recent.length > 0) {
+        historyContainer.innerHTML = repData.recent.map(item => `
+            <div class="reputation-item">
+                <img class="reputation-avatar" src="${item.avatar || '/default-avatar.png'}" onerror="this.src='/default-avatar.png'">
+                <span class="reputation-name">${escapeHtml(item.username)}</span>
+                <span class="reputation-date">${formatDate(item.created_at)}</span>
+                <span class="reputation-points-small">+${item.points}</span>
+            </div>
+        `).join('');
+    } else {
+        historyContainer.innerHTML = '<div class="empty" style="padding: 16px; text-align: center;">Пока никто не оценил</div>';
+    }
+}
+
+                const roleText = user.role === 'admin' ? '👑 Администратор' : '👤 Пользователь';
+                const avatarHtml = user.avatar 
+                    ? `<img src="${user.avatar}">` 
+                    : user.username[0].toUpperCase();
+                const date = formatDate(user.created_at);
+                
+                // Проверяем статус дружбы (только если смотрим чужой профиль)
+                let friendActionHtml = '';
+                if (currentUser && user.id !== currentUser.id) {
+                    const friendStatus = await checkFriendStatus(user.id);
+                    
+                    if (friendStatus.status === 'none') {
+                        friendActionHtml = `<button class="friend-action-btn" onclick="sendFriendRequest(${user.id})">➕ Добавить в друзья</button>`;
+                    } else if (friendStatus.status === 'pending') {
+                        // Проверяем, кто отправил заявку
+                        friendActionHtml = `<div class="friend-status pending">⏳ Заявка отправлена</div>`;
+                    } else if (friendStatus.status === 'accepted') {
+                        friendActionHtml = `<div class="friend-status accepted">✓ Вы друзья</div>`;
+                    }
+                }
+                
+                // Список каналов
+                let channelsHtml = '';
+                if (channels.length === 0) {
+                    channelsHtml = '<div class="empty">📭 Нет каналов или групп</div>';
+                } else {
+                    channelsHtml = channels.map(ch => `
+                        <div class="channel-item" onclick="window.location.href='/channel.html?id=${ch.id}'">
+                            <div class="channel-avatar">${ch.type === 'channel' ? '📢' : '👥'}</div>
+                            <div class="channel-info">
+                                <div class="channel-name">${escapeHtml(ch.name)}</div>
+                                <div class="channel-desc">${escapeHtml(ch.description || 'Нет описания')}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                container.innerHTML = `
+                    <div class="profile-card">
+                        <div class="profile-avatar">${avatarHtml}</div>
+                        <div class="profile-name">${escapeHtml(user.username)}</div>
+                        <div class="profile-role">${roleText}</div>
+                        <!-- Репутация -->
+<div class="reputation-block">
+    <div class="reputation-stats">
+        <div class="reputation-points">
+            <span class="reputation-icon">⭐</span>
+            <span id="reputationPoints">0</span>
+            <span class="reputation-label">репутации</span>
+        </div>
+    </div>
+    <div id="reputationHistory" class="reputation-history"></div>
+</div>
+                        <div class="profile-stats">
+                            <div class="stat">
+                                <div class="stat-value">${channels.length}</div>
+                                <div class="stat-label">каналов/групп</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${date}</div>
+                                <div class="stat-label">с нами с</div>
+                            </div>
+                        </div>
+                        ${friendActionHtml}
+                    </div>
+                    <div class="section-title">📢 Каналы и группы</div>
+                    ${channelsHtml}
+                `;
+                
+            } catch (err) {
+                console.error('Ошибка загрузки профиля:', err);
+                container.innerHTML = '<div class="empty">❌ Пользователь не найден</div>';
+            }
+        }
+        
+        // Инициализация
+        async function init() {
+            // Проверяем авторизацию и получаем текущего пользователя
+            const res = await fetch('/api/me', { credentials: 'include' });
+            if (!res.ok) {
+                window.location.href = '/login.html';
+                return;
+            }
+            currentUser = await res.json();
+            
+            // Загружаем профиль
+            await loadProfile();
+        }
+        
+        // Запускаем
+        init();
+    </script>
+</body>
+</html>
