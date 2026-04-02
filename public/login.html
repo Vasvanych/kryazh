@@ -156,16 +156,18 @@
 
         <div class="error" id="errorMsg"></div>
 
-        <div class="form-group">
-            <label>Имя пользователя</label>
-            <input type="text" id="username" placeholder="Введите имя" autocomplete="username">
-        </div>
-        <div class="form-group">
-            <label>Пароль</label>
-            <input type="password" id="password" placeholder="Введите пароль" autocomplete="current-password">
-        </div>
-
-        <button class="btn" id="loginBtn">Войти</button>
+        <!-- ГЛАВНОЕ: ОБЕРНУЛИ ВСЁ В ФОРМУ -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Имя пользователя</label>
+                <input type="text" id="username" name="username" placeholder="Введите имя" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Пароль</label>
+                <input type="password" id="password" name="password" placeholder="Введите пароль" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn" id="loginBtn">Войти</button>
+        </form>
 
         <div class="switch-link">
             Нет аккаунта? <a href="/register">Зарегистрироваться</a>
@@ -185,43 +187,51 @@
         };
 
         const errorMsg = document.getElementById('errorMsg');
-        const loginBtn = document.getElementById('loginBtn');
+        const form = document.getElementById('loginForm');
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
 
-        async function login() {
+        async function login(username, password) {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ username, password })
+            });
+            return { res, data: await res.json() };
+        }
+
+        form.onsubmit = async (e) => {
+            e.preventDefault(); // Отменяем перезагрузку страницы
+
             const username = usernameInput.value.trim();
             const password = passwordInput.value.trim();
-            if (!username || !password) { errorMsg.textContent = 'Заполните все поля'; return; }
 
-            loginBtn.textContent = 'Входим...';
-            loginBtn.disabled = true;
+            if (!username || !password) {
+                errorMsg.textContent = 'Заполните все поля';
+                return;
+            }
+
+            const btn = document.getElementById('loginBtn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Входим...';
+            btn.disabled = true;
 
             try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
+                const { res, data } = await login(username, password);
                 if (!res.ok) {
-                    errorMsg.textContent = data.error;
-                    loginBtn.textContent = 'Войти';
-                    loginBtn.disabled = false;
+                    errorMsg.textContent = data.error || 'Ошибка входа';
+                    btn.textContent = originalText;
+                    btn.disabled = false;
                     return;
                 }
                 window.location.href = '/';
             } catch {
                 errorMsg.textContent = 'Ошибка соединения';
-                loginBtn.textContent = 'Войти';
-                loginBtn.disabled = false;
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
-        }
-
-        loginBtn.onclick = login;
-        passwordInput.onkeypress = (e) => { if (e.key === 'Enter') login(); };
-        usernameInput.onkeypress = (e) => { if (e.key === 'Enter') passwordInput.focus(); };
+        };
     </script>
 </body>
 </html>
