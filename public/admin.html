@@ -40,13 +40,11 @@
             color: var(--text);
         }
 
-        /* Админ-контейнер */
         .admin-container {
             display: flex;
             min-height: 100vh;
         }
 
-        /* Боковое меню */
         .admin-sidebar {
             width: 280px;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -89,14 +87,12 @@
             color: white;
         }
 
-        /* Основной контент */
         .admin-content {
             flex: 1;
             margin-left: 280px;
             padding: 30px;
         }
 
-        /* Шапка */
         .admin-header {
             background: var(--surface);
             padding: 20px 30px;
@@ -134,7 +130,6 @@
             background: var(--danger-dark);
         }
 
-        /* Карточки статистики */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -167,7 +162,6 @@
             font-size: 14px;
         }
 
-        /* Таблицы */
         .table-container {
             background: var(--surface);
             border-radius: 16px;
@@ -199,7 +193,6 @@
             background: var(--bg);
         }
 
-        /* Бейджи */
         .badge {
             display: inline-block;
             padding: 4px 12px;
@@ -233,7 +226,6 @@
             color: white;
         }
 
-        /* Кнопки */
         .btn {
             padding: 6px 14px;
             border-radius: 6px;
@@ -276,7 +268,6 @@
             font-size: 11px;
         }
 
-        /* Секции */
         .section {
             display: none;
         }
@@ -291,7 +282,6 @@
             color: var(--text-secondary);
         }
 
-        /* Поиск */
         .search-box {
             margin-bottom: 20px;
             display: flex;
@@ -308,7 +298,6 @@
             color: var(--text);
         }
 
-        /* Модальное окно */
         .modal {
             display: none;
             position: fixed;
@@ -338,7 +327,6 @@
             margin-bottom: 16px;
         }
 
-        /* Пост в таблице */
         .post-preview {
             max-width: 250px;
             overflow: hidden;
@@ -346,11 +334,6 @@
             white-space: nowrap;
         }
 
-        .post-media-icon {
-            font-size: 16px;
-        }
-
-        /* Мобильная адаптация */
         @media (max-width: 768px) {
             .admin-sidebar {
                 width: 80px;
@@ -589,6 +572,11 @@
                                 <select id="themeSelect" style="margin-left: 10px; padding: 5px 10px;">
                                     <option value="light">Светлая</option>
                                     <option value="dark">Тёмная</option>
+                                    <option value="wild">🐺 дыхание природы</option>
+                                    <option value="barbie">🎀 Барбикор</option>
+                                    <option value="cyber">💜 Киберпанк</option>
+                                    <option value="ПАША">📱 ПАША</option>
+                                    <option value="newhorizons">🏝️ бананчики</option>
                                 </select>
                             </label>
                         </div>
@@ -652,7 +640,6 @@
             document.getElementById('statMessages').textContent = data.messages;
             document.getElementById('statOnline').textContent = data.online;
             
-            // Дополнительная статистика
             const postsRes = await fetch('/api/admin/posts/stats');
             if (postsRes.ok) {
                 const postsData = await postsRes.json();
@@ -671,7 +658,6 @@
                 users = users.filter(u => u.username.toLowerCase().includes(search));
             }
             
-            // Загружаем репутацию для каждого пользователя
             const usersWithRep = await Promise.all(users.map(async (u) => {
                 const repRes = await fetch(`/api/users/${u.id}/reputation`);
                 const repData = await repRes.json();
@@ -692,8 +678,11 @@
                     <td><span style="color: #ff9800;">⭐ ${u.reputation || 0}</span></td>
                     <td>${new Date(u.created_at).toLocaleDateString()}</td>
                     <td>
-                        ${u.role !== 'admin' ? `<button class="btn btn-warning btn-sm" onclick="makeAdmin(${u.id})">👑 Сделать админом</button>` : ''}
-                        ${u.id !== currentUser?.id ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete('user', ${u.id}, '${escapeHtml(u.username)}')">🗑️ Удалить</button>` : ''}
+                        <button class="btn btn-sm btn-primary" onclick="editReputation(${u.id}, '${escapeHtml(u.username)}', ${u.reputation || 0})" title="Изменить репутацию">⭐</button>
+                        <button class="btn btn-sm btn-warning" onclick="resetUserPassword(${u.id}, '${escapeHtml(u.username)}')" title="Сбросить пароль">🔑</button>
+                        <button class="btn btn-sm btn-primary" onclick="sendAdminMessage(${u.id}, '${escapeHtml(u.username)}')" title="Отправить сообщение">📨</button>
+                        ${u.role !== 'admin' ? `<button class="btn btn-warning btn-sm" onclick="makeAdmin(${u.id})">👑</button>` : ''}
+                        ${u.id !== currentUser?.id ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete('user', ${u.id}, '${escapeHtml(u.username)}')">🗑️</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -845,6 +834,87 @@
             }
         }
         
+        // ============= НОВЫЕ ФУНКЦИИ =============
+        
+        // Изменить репутацию
+        async function editReputation(userId, username, currentRep) {
+            const action = prompt(`⭐ Изменение репутации пользователя "${username}"\nТекущая репутация: ${currentRep}\n\nВведите число (например: +5 или -3):`);
+            if (action === null) return;
+            
+            const points = parseInt(action);
+            if (isNaN(points)) {
+                alert('Введите число!');
+                return;
+            }
+            
+            const reason = prompt('Причина изменения (необязательно):');
+            
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/reputation`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ points, reason: reason || 'Изменено администратором' })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✅ Репутация изменена!\nНовое значение: ${data.newPoints}`);
+                    loadUsers();
+                    loadReputation();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + (err.error || 'Ошибка'));
+                }
+            } catch (err) {
+                alert('Ошибка соединения');
+            }
+        }
+        
+        // Сброс пароля
+        async function resetUserPassword(userId, username) {
+            if (!confirm(`Сбросить пароль пользователя "${username}"?\n\nЕму будет выдан временный пароль.`)) return;
+            
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✅ Временный пароль для ${data.username}: ${data.tempPassword}\n\nСообщите его пользователю.`);
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + (err.error || 'Ошибка'));
+                }
+            } catch (err) {
+                alert('Ошибка соединения');
+            }
+        }
+        
+        // Отправка сообщения пользователю
+        async function sendAdminMessage(userId, username) {
+            const message = prompt(`📨 Отправить сообщение пользователю "${username}"\n\nВведите текст сообщения:`);
+            if (!message || message.trim() === '') return;
+            
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message.trim() })
+                });
+                
+                if (res.ok) {
+                    alert(`✅ Сообщение отправлено пользователю "${username}"`);
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + (err.error || 'Ошибка'));
+                }
+            } catch (err) {
+                alert('Ошибка соединения');
+            }
+        }
+        
         // Подтверждение удаления
         function confirmDelete(type, id, name = '') {
             const confirmDeleteSetting = document.getElementById('confirmDelete')?.checked;
@@ -900,10 +970,8 @@
             return div.innerHTML;
         }
         
-        // Обновление всего
         function refreshAll() {
             const activeSection = document.querySelector('.section.active')?.id;
-            
             if (activeSection === 'dashboard') loadStats();
             if (activeSection === 'users') loadUsers();
             if (activeSection === 'chats') loadChats();
@@ -983,7 +1051,6 @@
             loadMessages();
             loadReputation();
             
-            // WebSocket для уведомлений
             socket = io();
             socket.emit('auth', currentUser?.id);
             socket.on('new_post', () => { if (document.getElementById('posts').classList.contains('active')) loadPosts(); });

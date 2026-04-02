@@ -175,6 +175,18 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+        -- АДМИНСКИЕ СООБЩЕНИЯ
+    CREATE TABLE IF NOT EXISTS admin_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        admin_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+    );
 `);
 
 // ============= ДОБАВЛЯЕМ НЕДОСТАЮЩИЕ КОЛОНКИ =============
@@ -202,6 +214,8 @@ columns.forEach(sql => {
 // ============= СОЗДАЁМ ИНДЕКСЫ =============
 try {
     db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_admin_messages_user ON admin_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_messages_created ON admin_messages(created_at);
 
         CREATE INDEX IF NOT EXISTS idx_post_comments_post ON post_comments(post_id);
         CREATE INDEX IF NOT EXISTS idx_post_comments_user ON post_comments(user_id);

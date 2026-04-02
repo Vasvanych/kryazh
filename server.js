@@ -2563,4 +2563,153 @@ app.post('/api/posts/:id/comments', requireAuth, (req, res) => {
     }
 });
 
+// ============= РАСШИРЕННЫЕ АДМИН-ФУНКЦИИ =============
+
+/**
+ * ИЗМЕНИТЬ РЕПУТАЦИЮ ПОЛЬЗОВАТЕЛЯ (админ)
+ * POST /api/admin/users/:userId/reputation
+ */
+app.post('/api/admin/users/:userId/reputation', requireAdmin, (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const { points, reason } = req.body;
+    
+    if (isNaN(points)) {
+        return res.status(400).json({ error: 'Укажите количество очков' });
+    }
+    
+    try {
+        // Проверяем, существует ли пользователь
+        const user = db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        
+        // Обновляем репутацию
+        const existing = db.prepare('SELECT * FROM user_reputation WHERE user_id = ?').get(userId);
+        if (existing) {
+            db.prepare('UPDATE user_reputation SET points = points + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+                .run(points, userId);
+        } else {
+            db.prepare('INSERT INTO user_reputation (user_id, points) VALUES (?, ?)')
+                .run(userId, points);
+        }
+        
+        // Добавляем запись в историю (от админа)
+        db.prepare(`
+            INSERT INTO reputation_history (from_user_id, to_user_id, points, created_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(req.session.userId, userId, points);
+        
+        const newPoints = db.prepare('SELECT points FROM user_reputation WHERE user_id = ?').get(userId).points;
+        
+        res.json({ 
+            success: true, 
+            newPoints: newPoints,
+            message: `Репутация пользователя ${user.username} изменена на ${points > 0 ? '+' : ''}${points}`
+        });
+        
+    } catch (error) {
+        console.error('Ошибка изменения репутации:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * СБРОС ПАРОЛЯ (выдать временный)
+ * POST /api/admin/users/:userId/reset-password
+ */
+app.post('/api/admin/users/:userId/reset-password', requireAdmin, async (req, res) => {
+    const userId = parseInt(req.params.userId);
+    
+    try {
+        const user = db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        
+        // Генерируем временный пароль (8 символов + цифры)
+        const tempPassword = Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 1000);
+        const hash = await bcrypt.hash(tempPassword, 10);
+        
+        db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, userId);
+        
+        res.json({ 
+            success: true, 
+            username: user.username,
+            tempPassword: tempPassword
+        });
+        
+    } catch (error) {
+        console.error('Ошибка сброса пароля:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ОТПРАВИТЬ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ (от админа)
+ * POST /api/admin/users/:userId/message
+ */
+app.post('/api/admin/users/:userId/message', requireAdmin, (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const adminId = req.session.userId;
+    const { message } = req.body;
+    
+    if (!message || message.trim() === '') {
+        return res.status(400).json({ error: 'Сообщение не может быть пустым' });
+    }
+    
+    try {
+        const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        
+        // Сохраняем сообщение
+        db.prepare(`
+            INSERT INTO admin_messages (user_id, admin_id, message, created_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(userId, adminId, message.trim());
+        
+        // Отправляем уведомление через Socket.IO (если пользователь онлайн)
+        const socketId = userSessions.get(userId);
+        if (socketId) {
+            io.to(socketId).emit('admin_message', {
+                message: message.trim(),
+                date: new Date().toISOString()
+            });
+        }
+        
+        res.json({ success: true, message: 'Сообщение отправлено' });
+        
+    } catch (error) {
+        console.error('Ошибка отправки сообщения:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ПОЛУЧИТЬ СПИСОК АДМИНСКИХ СООБЩЕНИЙ (для пользователя)
+ * GET /api/admin/messages
+ */
+app.get('/api/admin/messages', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    
+    try {
+        const messages = db.prepare(`
+            SELECT am.*, u.username as admin_name
+            FROM admin_messages am
+            JOIN users u ON am.admin_id = u.id
+            WHERE am.user_id = ?
+            ORDER BY am.created_at DESC
+            LIMIT 50
+        `).all(userId);
+        
+        res.json(messages);
+        
+    } catch (error) {
+        console.error('Ошибка получения сообщений:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
 server.listen(port, () => console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`));

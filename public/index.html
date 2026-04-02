@@ -2404,6 +2404,91 @@
         socket.on('call signal', ({ from, signal }) => { if (peerConnection && callActive && currentCallPartner === from) { peerConnection.addIceCandidate(new RTCIceCandidate(signal)).catch(err => console.error(err)); } });
         socket.on('call ended', ({ from }) => { if (callActive && currentCallPartner === from) { alert('Собеседник завершил звонок'); endCall(); } });
         
+        // ============= ПОЛУЧЕНИЕ СООБЩЕНИЙ ОТ АДМИНИСТРАТОРА =============
+socket.on('admin_message', (data) => {
+    console.log('📨 Получено сообщение от администратора:', data);
+    
+    // 1. Показываем системное уведомление (push), если разрешено
+    if (Notification.permission === 'granted' && localStorage.getItem('notifications') === 'on') {
+        new Notification('📢 Сообщение от администрации', {
+            body: data.message,
+            icon: '/icons/Kryazh.png',
+            silent: false
+        });
+    }
+    
+    // 2. Показываем всплывающее окно прямо в интерфейсе
+    const notificationDiv = document.createElement('div');
+    notificationDiv.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: var(--primary);
+        color: white;
+        padding: 14px 20px;
+        border-radius: 12px;
+        z-index: 10000;
+        max-width: 320px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        cursor: pointer;
+        animation: slideIn 0.3s ease;
+        font-size: 14px;
+    `;
+    
+    // Добавляем анимацию появления
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Форматируем дату
+    const date = new Date(data.date);
+    const formattedDate = date.toLocaleString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: 'numeric',
+        month: 'numeric'
+    });
+    
+    notificationDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">📨</span>
+            <div style="flex: 1;">
+                <strong style="font-size: 14px;">Сообщение от администрации</strong>
+                <div style="font-size: 13px; margin-top: 4px;">${escapeHtml(data.message)}</div>
+                <small style="font-size: 10px; opacity: 0.8;">${formattedDate}</small>
+            </div>
+            <button style="background: none; border: none; color: white; cursor: pointer; font-size: 16px;" onclick="this.parentElement.parentElement.remove()">✕</button>
+        </div>
+    `;
+    
+    // При клике на уведомление — скрываем его
+    notificationDiv.onclick = (e) => {
+        if (e.target.tagName !== 'BUTTON') {
+            notificationDiv.remove();
+        }
+    };
+    
+    document.body.appendChild(notificationDiv);
+    
+    // Автоматически скрываем через 10 секунд
+    setTimeout(() => {
+        if (notificationDiv && notificationDiv.parentNode) {
+            notificationDiv.remove();
+        }
+    }, 10000);
+});
+
         await loadChats();
     })();
     
