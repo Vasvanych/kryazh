@@ -56,7 +56,7 @@ app.use(helmet({
         preload: true
     }
 }));
-
+app.use(express.json({ limit: '1mb' }));
 // Сессии в файлах с шифрованием
 const sessionStore = new FileStore({
     path: isRailway ? '/data/sessions' : './sessions',
@@ -71,7 +71,6 @@ const sessionStore = new FileStore({
     }
 });
 
-// Настройка сессий с максимальной защитой
 app.use(session({
     store: sessionStore,
     secret: SESSION_SECRET,
@@ -87,6 +86,137 @@ app.use(session({
     name: 'kryazh_session',
     rolling: true
 }));
+
+// ============= КОММЕНТАРИИ К ПОСТАМ =============
+
+/**
+ * Получить комментарии к посту
+ * GET /api/posts/:id/comments
+ */
+app.get('/api/posts/:id/comments', requireAuth, (req, res) => {
+    const postId = parseInt(req.params.id);
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    try {
+        const comments = db.prepare(`
+            SELECT 
+                pc.*,
+                u.username,
+                u.avatar
+            FROM post_comments pc
+            JOIN users u ON pc.user_id = u.id
+            WHERE pc.post_id = ?
+            ORDER BY pc.created_at ASC
+            LIMIT ? OFFSET ?
+        `).all(postId, limit, offset);
+        
+        // Получаем общее количество комментариев
+        const count = db.prepare('SELECT COUNT(*) as total FROM post_comments WHERE post_id = ?').get(postId).total;
+        
+        res.json({ comments, total: count });
+        
+    } catch (error) {
+        console.error('Ошибка получения комментариев:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Создать комментарий к посту
+ * POST /api/posts/:id/comments
+ */
+app.post('/api/posts/:id/comments', requireAuth, (req, res) => {
+    const postId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    const { content } = req.body;
+    
+    if (!content || content.trim() === '') {
+        return res.status(400).json({ error: 'Комментарий не может быть пустым' });
+    }
+    
+    if (content.length > 1000) {
+        return res.status(400).json({ error: 'Комментарий слишком длинный (макс. 1000 символов)' });
+    }
+    
+    try {
+        // Проверяем, существует ли пост
+        const post = db.prepare('SELECT id, author_id FROM channel_posts WHERE id = ?').get(postId);
+        if (!post) {
+            return res.status(404).json({ error: 'Пост не найден' });
+        }
+        
+        // Создаём комментарий
+        const stmt = db.prepare(`
+            INSERT INTO post_comments (post_id, user_id, content)
+            VALUES (?, ?, ?)
+        `);
+        const info = stmt.run(postId, userId, content.trim());
+        
+        // Получаем созданный комментарий с информацией о пользователе
+        const newComment = db.prepare(`
+            SELECT pc.*, u.username, u.avatar
+            FROM post_comments pc
+            JOIN users u ON pc.user_id = u.id
+            WHERE pc.id = ?
+        `).get(info.lastInsertRowid);
+        
+        // Отправляем уведомление автору поста (если комментатор не автор)
+        if (post.author_id !== userId) {
+            const authorSocketId = userSessions.get(post.author_id);
+            if (authorSocketId) {
+                io.to(authorSocketId).emit('new_comment', {
+                    postId: postId,
+                    comment: newComment,
+                    postAuthorId: post.author_id
+                });
+            }
+        }
+        
+        res.status(201).json(newComment);
+        
+    } catch (error) {
+        console.error('Ошибка создания комментария:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Удалить комментарий
+ * DELETE /api/comments/:id
+ */
+app.delete('/api/comments/:id', requireAuth, (req, res) => {
+    const commentId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    const isAdmin = req.session.role === 'admin';
+    
+    try {
+        const comment = db.prepare('SELECT * FROM post_comments WHERE id = ?').get(commentId);
+        if (!comment) {
+            return res.status(404).json({ error: 'Комментарий не найден' });
+        }
+        
+        // Права: автор комментария, автор поста или админ
+        const post = db.prepare('SELECT author_id FROM channel_posts WHERE id = ?').get(comment.post_id);
+        const isCommentAuthor = comment.user_id === userId;
+        const isPostAuthor = post && post.author_id === userId;
+        
+        if (isCommentAuthor || isPostAuthor || isAdmin) {
+            db.prepare('DELETE FROM post_comments WHERE id = ?').run(commentId);
+            res.json({ success: true });
+        } else {
+            res.status(403).json({ error: 'Нет прав на удаление' });
+        }
+        
+    } catch (error) {
+        console.error('Ошибка удаления комментария:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+
+// Настройка сессий с максимальной защитой
+
 
 // ============= PUSH-УВЕДОМЛЕНИЯ =============
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
@@ -219,7 +349,7 @@ const uploadVoice = multer({
     }
 });
 
-app.use(express.json({ limit: '1mb' }));
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadDir));
 
@@ -1036,6 +1166,7 @@ app.post('/api/channels/:id/posts', requireAuth, (req, res) => {
             WHERE p.id = ?
         `).get(info.lastInsertRowid);
         
+        
         console.log(`✅ Пост создан! ID: ${post.id}, канал: ${post.channel_name}`);
         
         // ============= ЛОГИ ДЛЯ ОТЛАДКИ =============
@@ -1086,27 +1217,28 @@ app.get('/api/feed', requireAuth, (req, res) => {
     
     try {
         // 1. Получаем посты из каналов, на которые подписан пользователь
-        const channelPosts = db.prepare(`
-            SELECT 
-                p.id,
-                p.content,
-                p.media_url,
-                p.created_at,
-                p.author_id,
-                u.username as author_name,
-                u.avatar as author_avatar,
-                c.name as source_name,
-                c.id as source_id,
-                'channel' as source_type,
-                (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
-                (SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = ?) as user_liked
-            FROM channel_posts p
-            INNER JOIN chats c ON p.channel_id = c.id
-            INNER JOIN chat_participants cp ON c.id = cp.chat_id
-            LEFT JOIN users u ON p.author_id = u.id
-            WHERE cp.user_id = ? AND c.type = 'channel'
-            ORDER BY p.created_at DESC
-        `).all(userId, userId);
+const channelPosts = db.prepare(`
+    SELECT 
+        p.id,
+        p.content,
+        p.media_url,
+        p.created_at,
+        p.author_id,
+        u.username as author_name,
+        u.avatar as author_avatar,
+        c.name as source_name,
+        c.id as source_id,
+        'channel' as source_type,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+        (SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = ?) as user_liked,
+        (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comments_count
+    FROM channel_posts p
+    INNER JOIN chats c ON p.channel_id = c.id
+    INNER JOIN chat_participants cp ON c.id = cp.chat_id
+    LEFT JOIN users u ON p.author_id = u.id
+    WHERE cp.user_id = ? AND c.type = 'channel'
+    ORDER BY p.created_at DESC
+`).all(userId, userId);
         
         // 2. Получаем статусы друзей (если есть таблица friend_posts)
         let friendPosts = [];
@@ -2369,6 +2501,66 @@ app.get('/api/admin/reputation', requireAdmin, (req, res) => {
         ORDER BY reputation DESC
     `).all();
     res.json(users);
+});
+
+app.post('/api/posts/:id/comments', requireAuth, (req, res) => {
+    const postId = parseInt(req.params.id);
+    const userId = req.session.userId;
+    const { content } = req.body;
+    
+    console.log('========================================');
+    console.log('📝 POST /api/posts/:id/comments');
+    console.log('   postId:', postId);
+    console.log('   userId:', userId);
+    console.log('   content:', content);
+    console.log('   req.session:', req.session);
+    console.log('========================================');
+    
+    if (!content || content.trim() === '') {
+        console.log('❌ Пустой комментарий');
+        return res.status(400).json({ error: 'Комментарий не может быть пустым' });
+    }
+    
+    if (content.length > 1000) {
+        console.log('❌ Слишком длинный');
+        return res.status(400).json({ error: 'Комментарий слишком длинный (макс. 1000 символов)' });
+    }
+    
+    try {
+        // Проверяем, существует ли пост
+        const post = db.prepare('SELECT id, author_id FROM channel_posts WHERE id = ?').get(postId);
+        console.log('   Пост найден:', post);
+        
+        if (!post) {
+            console.log('❌ Пост не найден');
+            return res.status(404).json({ error: 'Пост не найден' });
+        }
+        
+        // Создаём комментарий
+        const stmt = db.prepare(`
+            INSERT INTO post_comments (post_id, user_id, content)
+            VALUES (?, ?, ?)
+        `);
+        const info = stmt.run(postId, userId, content.trim());
+        console.log('   Комментарий создан, ID:', info.lastInsertRowid);
+        
+        // Получаем созданный комментарий
+        const newComment = db.prepare(`
+            SELECT pc.*, u.username, u.avatar
+            FROM post_comments pc
+            JOIN users u ON pc.user_id = u.id
+            WHERE pc.id = ?
+        `).get(info.lastInsertRowid);
+        
+        console.log('   Отправляем ответ:', newComment);
+        res.status(201).json(newComment);
+        
+    } catch (error) {
+        console.error('❌ ОШИБКА:', error);
+        console.error('   error.message:', error.message);
+        console.error('   error.stack:', error.stack);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 server.listen(port, () => console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`));

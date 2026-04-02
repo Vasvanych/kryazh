@@ -34,6 +34,20 @@ db.pragma('journal_mode = WAL');
 db.exec(`
 
 
+
+        -- КОММЕНТАРИИ К ПОСТАМ
+    CREATE TABLE IF NOT EXISTS post_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (post_id) REFERENCES channel_posts(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+
         -- НОВЫЕ ТАБЛИЦЫ ДЛЯ ЛАЙКОВ И РЕПУТАЦИИ
     
     -- Лайки к постам
@@ -188,6 +202,11 @@ columns.forEach(sql => {
 // ============= СОЗДАЁМ ИНДЕКСЫ =============
 try {
     db.exec(`
+
+        CREATE INDEX IF NOT EXISTS idx_post_comments_post ON post_comments(post_id);
+        CREATE INDEX IF NOT EXISTS idx_post_comments_user ON post_comments(user_id);
+        CREATE INDEX IF NOT EXISTS idx_post_comments_created ON post_comments(created_at);
+
         CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
         CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
         CREATE INDEX IF NOT EXISTS idx_messages_parent ON messages(parent_id);
@@ -221,6 +240,12 @@ try {
 } catch (err) {
     console.log('⚠️ Ошибка создания индексов:', err.message);
 }
+
+try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_post_comments_post ON post_comments(post_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_post_comments_user ON post_comments(user_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_post_comments_created ON post_comments(created_at)`);
+} catch (err) {}
 
 // ============= СОЗДАНИЕ АДМИНА =============
 try {
@@ -336,6 +361,25 @@ db.getChatById = function(chatId) {
 };
 
 console.log('✅ База данных готова, все функции добавлены');
+
+// ПРИНУДИТЕЛЬНОЕ СОЗДАНИЕ ТАБЛИЦЫ КОММЕНТАРИЕВ (для старых баз)
+try {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS post_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (post_id) REFERENCES channel_posts(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
+    console.log('✅ Таблица post_comments проверена/создана');
+} catch (err) {
+    console.log('⚠️ Ошибка создания post_comments:', err.message);
+}
 
 // Экспортируем сам объект db (со всеми добавленными методами)
 module.exports = db;

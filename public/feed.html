@@ -6,6 +6,156 @@
     <meta name="theme-color" content="#764ba2">
     <title>Лента новостей - Kryazh</title>
     <style>
+        /* ============= МОДАЛЬНОЕ ОКНО КОММЕНТАРИЕВ ============= */
+        .comments-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .comments-modal.active {
+            display: flex;
+        }
+
+        .comments-modal-content {
+            background: var(--surface);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .comments-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comments-modal-header h3 {
+            font-size: 18px;
+        }
+
+        .comments-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .comments-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            min-height: 200px;
+            max-height: 400px;
+        }
+
+        .comment-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comment-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .comment-content {
+            flex: 1;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .comment-text {
+            font-size: 14px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .comment-date {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .comment-delete {
+            background: none;
+            border: none;
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0 4px;
+        }
+
+        .comments-input-area {
+            display: flex;
+            gap: 10px;
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            align-items: flex-start;
+        }
+
+        .comments-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        #commentInput {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .comments-send-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .empty-comments {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .comments-count {
+            margin-left: 2px;
+        }
+
+        /* ============= ОСНОВНЫЕ СТИЛИ ============= */
         * {
             margin: 0;
             padding: 0;
@@ -385,6 +535,24 @@
         <div id="posts"></div>
     </div>
 
+    <!-- Модальное окно комментариев -->
+    <div id="commentsModal" class="comments-modal">
+        <div class="comments-modal-content">
+            <div class="comments-modal-header">
+                <h3>💬 Комментарии</h3>
+                <button class="comments-modal-close" onclick="closeCommentsModal()">✕</button>
+            </div>
+            <div class="comments-list" id="commentsList">
+                <div class="loading">⏳ Загрузка...</div>
+            </div>
+            <div class="comments-input-area">
+                <img class="comments-user-avatar" id="commentsUserAvatar" src="">
+                <textarea id="commentInput" placeholder="Напишите комментарий..." rows="2"></textarea>
+                <button id="sendCommentBtn" class="comments-send-btn">📨 Отправить</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         // Применяем тему
@@ -399,6 +567,7 @@
         let hasMore = true;
         let currentUser = null;
         let socket = null;
+        let currentPostId = null;
 
         // Защита от XSS
         function escapeHtml(text) {
@@ -482,8 +651,8 @@
                         <button class="like-btn ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike(${post.id}, this)">
                             ❤️ <span class="likes-count">${likesCount}</span>
                         </button>
-                        <button class="comment-btn" onclick="event.stopPropagation(); alert('Комментарии скоро будут')">
-                            💬 Комментировать
+                        <button class="comment-btn" onclick="event.stopPropagation(); showComments(${post.id})">
+                            💬 <span class="comments-count">${post.comments_count || 0}</span>
                         </button>
                     </div>
                 </div>
@@ -611,7 +780,105 @@
             }, 100);
         });
 
-        // Инициализация
+        // ============= КОММЕНТАРИИ =============
+
+        // Открыть модальное окно с комментариями
+        async function showComments(postId) {
+            currentPostId = postId;
+            const modal = document.getElementById('commentsModal');
+            const commentsList = document.getElementById('commentsList');
+            
+            modal.classList.add('active');
+            commentsList.innerHTML = '<div class="loading">⏳ Загрузка комментариев...</div>';
+            
+            try {
+                const res = await fetch(`/api/posts/${postId}/comments`, { credentials: 'include' });
+                const data = await res.json();
+                
+                if (!data.comments || data.comments.length === 0) {
+                    commentsList.innerHTML = '<div class="empty-comments">💬 Нет комментариев. Будьте первым!</div>';
+                } else {
+                    commentsList.innerHTML = data.comments.map(comment => `
+                        <div class="comment-item" data-comment-id="${comment.id}">
+                            <img class="comment-avatar" src="${comment.avatar || ''}" onerror="this.style.display='none'">
+                            <div class="comment-content">
+                                <div class="comment-author">${escapeHtml(comment.username)}</div>
+                                <div class="comment-text">${escapeHtml(comment.content)}</div>
+                                <div class="comment-date">${formatDate(comment.created_at)}</div>
+                            </div>
+                            ${(comment.user_id === currentUser?.id || currentUser?.role === 'admin') ? 
+                                `<button class="comment-delete" onclick="deleteComment(${comment.id}, ${postId})">🗑️</button>` : ''}
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (err) {
+                console.error('Ошибка загрузки комментариев:', err);
+                commentsList.innerHTML = '<div class="empty-comments">❌ Ошибка загрузки</div>';
+            }
+        }
+
+        // Закрыть модальное окно
+        function closeCommentsModal() {
+            document.getElementById('commentsModal').classList.remove('active');
+            currentPostId = null;
+            document.getElementById('commentInput').value = '';
+        }
+
+        // Отправить комментарий
+        async function sendComment() {
+            if (!currentPostId) return;
+            
+            const content = document.getElementById('commentInput').value.trim();
+            if (!content) {
+                alert('Введите комментарий');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/posts/${currentPostId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content })
+                });
+                
+                if (res.ok) {
+                    document.getElementById('commentInput').value = '';
+                    showComments(currentPostId);
+                    loadPosts(); // Обновляем счётчик комментариев в ленте
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Ошибка');
+                }
+            } catch (err) {
+                console.error('Ошибка:', err);
+                alert('Ошибка соединения');
+            }
+        }
+
+        // Удалить комментарий
+        async function deleteComment(commentId, postId) {
+            if (!confirm('Удалить комментарий?')) return;
+            
+            try {
+                const res = await fetch(`/api/comments/${commentId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                if (res.ok) {
+                    showComments(postId);
+                    loadPosts();
+                } else {
+                    alert('Ошибка удаления');
+                }
+            } catch (err) {
+                alert('Ошибка соединения');
+            }
+        }
+
+        // ============= ИНИЦИАЛИЗАЦИЯ =============
         async function init() {
             try {
                 const res = await fetch('/api/me', { credentials: 'include' });
@@ -628,6 +895,27 @@
                         offset = 0;
                         hasMore = true;
                         loadPosts();
+                    };
+                }
+                
+                // Аватар пользователя для комментариев
+                const userAvatar = document.getElementById('commentsUserAvatar');
+                if (userAvatar && currentUser.avatar) {
+                    userAvatar.src = currentUser.avatar;
+                }
+                
+                // Кнопка отправки комментария
+                const sendCommentBtn = document.getElementById('sendCommentBtn');
+                if (sendCommentBtn) {
+                    sendCommentBtn.onclick = sendComment;
+                    console.log('✅ Кнопка отправки комментария привязана');
+                }
+                
+                // Закрытие модального окна по клику вне
+                const commentsModal = document.getElementById('commentsModal');
+                if (commentsModal) {
+                    commentsModal.onclick = (e) => {
+                        if (e.target === commentsModal) closeCommentsModal();
                     };
                 }
                 
@@ -650,6 +938,7 @@
             }
         }
         
+        // Запускаем
         init();
     </script>
 </body>
