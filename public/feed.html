@@ -3,158 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#764ba2">
-    <title>Лента новостей - Kryazh</title>
+    <title>Лента - Kryazh</title>
     <style>
-        /* ============= МОДАЛЬНОЕ ОКНО КОММЕНТАРИЕВ ============= */
-        .comments-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .comments-modal.active {
-            display: flex;
-        }
-
-        .comments-modal-content {
-            background: var(--surface);
-            border-radius: 20px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 80vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .comments-modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .comments-modal-header h3 {
-            font-size: 18px;
-        }
-
-        .comments-modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--text-secondary);
-        }
-
-        .comments-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            min-height: 200px;
-            max-height: 400px;
-        }
-
-        .comment-item {
-            display: flex;
-            gap: 12px;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .comment-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        .comment-content {
-            flex: 1;
-        }
-
-        .comment-author {
-            font-weight: 600;
-            font-size: 13px;
-            margin-bottom: 4px;
-        }
-
-        .comment-text {
-            font-size: 14px;
-            line-height: 1.4;
-            word-break: break-word;
-        }
-
-        .comment-date {
-            font-size: 10px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .comment-delete {
-            background: none;
-            border: none;
-            color: #ff4444;
-            cursor: pointer;
-            font-size: 12px;
-            padding: 0 4px;
-        }
-
-        .comments-input-area {
-            display: flex;
-            gap: 10px;
-            padding: 16px;
-            border-top: 1px solid var(--border);
-            align-items: flex-start;
-        }
-
-        .comments-user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        #commentInput {
-            flex: 1;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            background: var(--bg);
-            color: var(--text);
-            font-size: 14px;
-            resize: none;
-            font-family: inherit;
-        }
-
-        .comments-send-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-        }
-
-        .empty-comments {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-        }
-
-        .comments-count {
-            margin-left: 2px;
-        }
-
         /* ============= ОСНОВНЫЕ СТИЛИ ============= */
         * {
             margin: 0;
@@ -256,9 +106,6 @@
             padding: 16px;
             margin-bottom: 12px;
             box-shadow: var(--shadow);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             position: sticky;
             top: 0;
             z-index: 10;
@@ -269,7 +116,58 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        /* Вкладки */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: var(--hover);
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Сортировка */
+        .sort-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sort-btn {
+            background: none;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .sort-btn.active {
+            background: var(--primary);
+            color: white;
         }
 
         .header-actions {
@@ -285,12 +183,6 @@
             border-radius: 24px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
-            transition: transform 0.2s;
-        }
-
-        .header-btn:active {
-            transform: scale(0.96);
         }
 
         /* Карточка поста */
@@ -300,11 +192,6 @@
             margin-bottom: 12px;
             padding: 14px;
             box-shadow: var(--shadow);
-            transition: transform 0.2s;
-        }
-
-        .post:active {
-            transform: scale(0.99);
         }
 
         .post-header {
@@ -350,6 +237,12 @@
             color: var(--text-secondary);
         }
 
+        .post-stats {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
         .post-content {
             font-size: 14px;
             line-height: 1.5;
@@ -386,7 +279,6 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            transition: all 0.2s;
             color: var(--text-secondary);
         }
 
@@ -424,15 +316,6 @@
             color: var(--text-secondary);
         }
 
-        .loading {
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
         .load-more {
             text-align: center;
             margin: 16px 0;
@@ -445,12 +328,9 @@
             border-radius: 30px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
-            color: var(--text);
-            transition: all 0.2s;
         }
 
-        /* Скелетон загрузки */
+        /* Скелетон */
         .skeleton {
             background: var(--surface);
             border-radius: 16px;
@@ -492,32 +372,10 @@
         }
 
         @media (max-width: 768px) {
-            body {
-                padding: 8px;
-            }
             .channel-avatar {
                 width: 40px;
                 height: 40px;
                 font-size: 20px;
-            }
-            .post-content {
-                font-size: 13px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .channel-avatar {
-                width: 36px;
-                height: 36px;
-                font-size: 18px;
-            }
-        }
-
-        @supports (padding: max(0px)) {
-            body {
-                padding-left: max(12px, env(safe-area-inset-left));
-                padding-right: max(12px, env(safe-area-inset-right));
-                padding-bottom: max(12px, env(safe-area-inset-bottom));
             }
         }
     </style>
@@ -526,6 +384,15 @@
     <div class="container">
         <div class="header">
             <h1>📰 Лента</h1>
+            <div class="tabs">
+                <button class="tab active" data-tab="feed">📰 Моя лента</button>
+                <button class="tab" data-tab="popular">🔥 Популярное</button>
+            </div>
+            <div class="sort-bar" id="sortBar" style="display: none;">
+                <button class="sort-btn active" data-sort="likes">❤️ По лайкам</button>
+                <button class="sort-btn" data-sort="comments">💬 По комментариям</button>
+                <button class="sort-btn" data-sort="new">🆕 По дате</button>
+            </div>
             <div class="header-actions">
                 <button class="header-btn" id="refreshBtn">🔄</button>
                 <button class="header-btn" onclick="window.location.href='/'">← Назад</button>
@@ -533,24 +400,6 @@
         </div>
         
         <div id="posts"></div>
-    </div>
-
-    <!-- Модальное окно комментариев -->
-    <div id="commentsModal" class="comments-modal">
-        <div class="comments-modal-content">
-            <div class="comments-modal-header">
-                <h3>💬 Комментарии</h3>
-                <button class="comments-modal-close" onclick="closeCommentsModal()">✕</button>
-            </div>
-            <div class="comments-list" id="commentsList">
-                <div class="loading">⏳ Загрузка...</div>
-            </div>
-            <div class="comments-input-area">
-                <img class="comments-user-avatar" id="commentsUserAvatar" src="">
-                <textarea id="commentInput" placeholder="Напишите комментарий..." rows="2"></textarea>
-                <button id="sendCommentBtn" class="comments-send-btn">📨 Отправить</button>
-            </div>
-        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -567,7 +416,8 @@
         let hasMore = true;
         let currentUser = null;
         let socket = null;
-        let currentPostId = null;
+        let currentTab = 'feed';      // 'feed' или 'popular'
+        let currentSort = 'likes';     // 'likes', 'comments', 'new'
 
         // Защита от XSS
         function escapeHtml(text) {
@@ -608,33 +458,30 @@
                 }
                 
                 const data = await res.json();
-                
                 const likesSpan = btnElement.querySelector('.likes-count');
-                if (likesSpan) {
-                    likesSpan.textContent = data.likesCount;
-                }
+                if (likesSpan) likesSpan.textContent = data.likesCount;
                 
                 if (data.userLiked) {
                     btnElement.classList.add('liked');
                 } else {
                     btnElement.classList.remove('liked');
                 }
-                
             } catch (err) {
-                console.error('Ошибка:', err);
+                console.error(err);
                 alert('Не удалось поставить лайк');
             }
         }
 
         // Отображение поста
         function renderPost(post) {
-            const defaultAvatar = post.channel_avatar || '';
+            const defaultAvatar = post.source_avatar || '';
             const avatarHtml = defaultAvatar 
                 ? `<img src="${defaultAvatar}" class="channel-avatar" style="object-fit:cover;">`
                 : `<div class="channel-avatar">📢</div>`;
             
             const isLiked = post.user_liked === 1 || post.user_liked === true;
             const likesCount = post.likes_count || 0;
+            const commentsCount = post.comments_count || 0;
             
             return `
                 <div class="post" data-post-id="${post.id}">
@@ -643,6 +490,7 @@
                         <div class="post-info">
                             <div class="channel-name">${escapeHtml(post.source_name)}</div>
                             <div class="post-date">${formatDate(post.created_at)}</div>
+                            ${currentTab === 'popular' ? `<div class="post-stats">❤️ ${likesCount} лайков • 💬 ${commentsCount} комментариев</div>` : ''}
                         </div>
                     </div>
                     <div class="post-content">${escapeHtml(post.content)}</div>
@@ -652,14 +500,14 @@
                             ❤️ <span class="likes-count">${likesCount}</span>
                         </button>
                         <button class="comment-btn" onclick="event.stopPropagation(); showComments(${post.id})">
-                            💬 <span class="comments-count">${post.comments_count || 0}</span>
+                            💬 <span class="comments-count">${commentsCount}</span>
                         </button>
                     </div>
                 </div>
             `;
         }
 
-        // Скелетон загрузки
+        // Показываем скелетон
         function showSkeleton() {
             const container = document.getElementById('posts');
             if (offset === 0) {
@@ -696,16 +544,17 @@
             
             loading = true;
             const container = document.getElementById('posts');
-            
-            if (offset === 0) {
-                showSkeleton();
-            }
+            if (offset === 0) showSkeleton();
             
             try {
-                const res = await fetch(`/api/feed?limit=${limit}&offset=${offset}`, {
-                    credentials: 'include'
-                });
+                let url;
+                if (currentTab === 'feed') {
+                    url = `/api/feed?limit=${limit}&offset=${offset}`;
+                } else {
+                    url = `/api/feed/popular?limit=${limit}&offset=${offset}&sort=${currentSort}`;
+                }
                 
+                const res = await fetch(url, { credentials: 'include' });
                 if (res.status === 401) {
                     window.location.href = '/login.html';
                     return;
@@ -713,17 +562,14 @@
                 
                 const posts = await res.json();
                 
-                if (offset === 0) {
-                    container.innerHTML = '';
-                }
+                if (offset === 0) container.innerHTML = '';
                 
                 if (posts.length === 0 && offset === 0) {
-                    container.innerHTML = `
-                        <div class="empty">
-                            📭 Пока нет постов<br><br>
-                            Подпишитесь на каналы, чтобы видеть их посты в ленте
-                        </div>
-                    `;
+                    if (currentTab === 'feed') {
+                        container.innerHTML = '<div class="empty">📭 Пока нет постов<br><br>Подпишитесь на каналы, чтобы видеть их посты в ленте</div>';
+                    } else {
+                        container.innerHTML = '<div class="empty">🔥 Популярных постов пока нет<br><br>Ставьте лайки, чтобы продвигать посты!</div>';
+                    }
                     hasMore = false;
                 } else if (posts.length > 0) {
                     posts.forEach(post => {
@@ -733,37 +579,34 @@
                     offset += posts.length;
                     hasMore = posts.length === limit;
                     
-                    if (hasMore) {
-                        let loadBtn = document.querySelector('.load-more');
-                        if (!loadBtn) {
-                            loadBtn = document.createElement('div');
-                            loadBtn.className = 'load-more';
-                            loadBtn.innerHTML = '<button onclick="loadPosts()">📖 Загрузить ещё</button>';
-                            container.appendChild(loadBtn);
-                        }
-                    } else {
-                        const loadBtn = document.querySelector('.load-more');
-                        if (loadBtn) loadBtn.remove();
+                    if (hasMore && !document.querySelector('.load-more')) {
+                        const loadBtn = document.createElement('div');
+                        loadBtn.className = 'load-more';
+                        loadBtn.innerHTML = '<button onclick="loadPosts()">📖 Загрузить ещё</button>';
+                        container.appendChild(loadBtn);
+                    } else if (!hasMore) {
+                        document.querySelector('.load-more')?.remove();
                     }
                 } else {
                     hasMore = false;
-                    const loadBtn = document.querySelector('.load-more');
-                    if (loadBtn) loadBtn.remove();
+                    document.querySelector('.load-more')?.remove();
                 }
-                
             } catch (err) {
                 console.error('Ошибка загрузки:', err);
                 if (offset === 0) {
-                    container.innerHTML = `
-                        <div class="empty">
-                            ❌ Ошибка загрузки<br><br>
-                            <button onclick="location.reload()" style="margin-top: 12px; padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 24px; cursor: pointer;">Повторить</button>
-                        </div>
-                    `;
+                    container.innerHTML = '<div class="empty">❌ Ошибка загрузки<br><button onclick="location.reload()" style="margin-top: 12px; padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 24px; cursor: pointer;">Повторить</button></div>';
                 }
             } finally {
                 loading = false;
             }
+        }
+
+        // Сброс и перезагрузка
+        function resetAndLoad() {
+            offset = 0;
+            hasMore = true;
+            loading = false;
+            loadPosts();
         }
 
         // Бесконечная прокрутка
@@ -773,7 +616,6 @@
             scrollTimeout = setTimeout(() => {
                 const scrollPosition = window.scrollY + window.innerHeight;
                 const pageHeight = document.documentElement.scrollHeight;
-                
                 if (scrollPosition >= pageHeight - 300 && !loading && hasMore) {
                     loadPosts();
                 }
@@ -781,101 +623,11 @@
         });
 
         // ============= КОММЕНТАРИИ =============
+        let currentPostId = null;
 
-        // Открыть модальное окно с комментариями
         async function showComments(postId) {
             currentPostId = postId;
-            const modal = document.getElementById('commentsModal');
-            const commentsList = document.getElementById('commentsList');
-            
-            modal.classList.add('active');
-            commentsList.innerHTML = '<div class="loading">⏳ Загрузка комментариев...</div>';
-            
-            try {
-                const res = await fetch(`/api/posts/${postId}/comments`, { credentials: 'include' });
-                const data = await res.json();
-                
-                if (!data.comments || data.comments.length === 0) {
-                    commentsList.innerHTML = '<div class="empty-comments">💬 Нет комментариев. Будьте первым!</div>';
-                } else {
-                    commentsList.innerHTML = data.comments.map(comment => `
-                        <div class="comment-item" data-comment-id="${comment.id}">
-                            <img class="comment-avatar" src="${comment.avatar || ''}" onerror="this.style.display='none'">
-                            <div class="comment-content">
-                                <div class="comment-author">${escapeHtml(comment.username)}</div>
-                                <div class="comment-text">${escapeHtml(comment.content)}</div>
-                                <div class="comment-date">${formatDate(comment.created_at)}</div>
-                            </div>
-                            ${(comment.user_id === currentUser?.id || currentUser?.role === 'admin') ? 
-                                `<button class="comment-delete" onclick="deleteComment(${comment.id}, ${postId})">🗑️</button>` : ''}
-                        </div>
-                    `).join('');
-                }
-                
-            } catch (err) {
-                console.error('Ошибка загрузки комментариев:', err);
-                commentsList.innerHTML = '<div class="empty-comments">❌ Ошибка загрузки</div>';
-            }
-        }
-
-        // Закрыть модальное окно
-        function closeCommentsModal() {
-            document.getElementById('commentsModal').classList.remove('active');
-            currentPostId = null;
-            document.getElementById('commentInput').value = '';
-        }
-
-        // Отправить комментарий
-        async function sendComment() {
-            if (!currentPostId) return;
-            
-            const content = document.getElementById('commentInput').value.trim();
-            if (!content) {
-                alert('Введите комментарий');
-                return;
-            }
-            
-            try {
-                const res = await fetch(`/api/posts/${currentPostId}/comments`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ content })
-                });
-                
-                if (res.ok) {
-                    document.getElementById('commentInput').value = '';
-                    showComments(currentPostId);
-                    loadPosts(); // Обновляем счётчик комментариев в ленте
-                } else {
-                    const err = await res.json();
-                    alert(err.error || 'Ошибка');
-                }
-            } catch (err) {
-                console.error('Ошибка:', err);
-                alert('Ошибка соединения');
-            }
-        }
-
-        // Удалить комментарий
-        async function deleteComment(commentId, postId) {
-            if (!confirm('Удалить комментарий?')) return;
-            
-            try {
-                const res = await fetch(`/api/comments/${commentId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                });
-                
-                if (res.ok) {
-                    showComments(postId);
-                    loadPosts();
-                } else {
-                    alert('Ошибка удаления');
-                }
-            } catch (err) {
-                alert('Ошибка соединения');
-            }
+            alert('Комментарии будут в следующем обновлении');
         }
 
         // ============= ИНИЦИАЛИЗАЦИЯ =============
@@ -889,45 +641,46 @@
                 currentUser = await res.json();
                 
                 // Кнопка обновления
-                const refreshBtn = document.getElementById('refreshBtn');
-                if (refreshBtn) {
-                    refreshBtn.onclick = () => {
-                        offset = 0;
-                        hasMore = true;
-                        loadPosts();
+                document.getElementById('refreshBtn').onclick = resetAndLoad;
+                
+                // Переключение вкладок
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.onclick = () => {
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        currentTab = tab.dataset.tab;
+                        
+                        // Показываем/скрываем сортировку для популярного
+                        const sortBar = document.getElementById('sortBar');
+                        if (currentTab === 'popular') {
+                            sortBar.style.display = 'flex';
+                        } else {
+                            sortBar.style.display = 'none';
+                        }
+                        
+                        resetAndLoad();
                     };
-                }
+                });
                 
-                // Аватар пользователя для комментариев
-                const userAvatar = document.getElementById('commentsUserAvatar');
-                if (userAvatar && currentUser.avatar) {
-                    userAvatar.src = currentUser.avatar;
-                }
-                
-                // Кнопка отправки комментария
-                const sendCommentBtn = document.getElementById('sendCommentBtn');
-                if (sendCommentBtn) {
-                    sendCommentBtn.onclick = sendComment;
-                    console.log('✅ Кнопка отправки комментария привязана');
-                }
-                
-                // Закрытие модального окна по клику вне
-                const commentsModal = document.getElementById('commentsModal');
-                if (commentsModal) {
-                    commentsModal.onclick = (e) => {
-                        if (e.target === commentsModal) closeCommentsModal();
+                // Сортировка
+                document.querySelectorAll('.sort-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentSort = btn.dataset.sort;
+                        resetAndLoad();
                     };
-                }
+                });
                 
                 // Подключаем WebSocket
                 socket = io();
                 socket.emit('auth', currentUser.id);
                 
-                // Слушаем новые посты
+                // Слушаем новые посты (только для моей ленты)
                 socket.on('new_post', () => {
-                    offset = 0;
-                    hasMore = true;
-                    loadPosts();
+                    if (currentTab === 'feed') {
+                        resetAndLoad();
+                    }
                 });
                 
                 // Загружаем посты
@@ -938,7 +691,6 @@
             }
         }
         
-        // Запускаем
         init();
     </script>
 </body>

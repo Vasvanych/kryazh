@@ -273,18 +273,18 @@ app.use((req, res, next) => {
 });
 
 // Rate limiting
-const apiLimiter = rateLimit({ 
-    windowMs: 15 * 60 * 1000, 
-    max: 200,
-    skip: (req) => req.path.startsWith('/uploads/')
-});
+//const apiLimiter = rateLimit({ 
+//    windowMs: 15 * 60 * 1000, 
+ //   max: 200,
+ //   skip: (req) => req.path.startsWith('/uploads/')
+//});
 
-const authLimiter = rateLimit({ 
-    windowMs: 15 * 60 * 1000, 
-    max: 1000
-});
+//const authLimiter = rateLimit({ 
+//    windowMs: 15 * 60 * 1000, 
+//    max: 1000
+//});
 
-app.use('/api/', apiLimiter);
+//app.use('/api/', apiLimiter);
 
 function requireAuth(req, res, next) {
     if (!req.session.userId) {
@@ -410,7 +410,7 @@ app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'log
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
 
 // Регистрация
-app.post('/api/register', authLimiter, async (req, res) => {
+app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
     
     if (!username || !password) {
@@ -458,7 +458,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 });
 
 // Вход
-app.post('/api/login', authLimiter, async (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     
     
@@ -1196,6 +1196,76 @@ app.post('/api/channels/:id/posts', requireAuth, (req, res) => {
         
     } catch (error) {
         console.error('❌ Ошибка создания поста:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// ============= ПОПУЛЯРНАЯ ЛЕНТА (ВСЕ ПОСТЫ) =============
+
+/**
+ * Получить популярные посты из всех каналов
+ * GET /api/feed/popular?limit=20&offset=0&sort=likes
+ */
+app.get('/api/feed/popular', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    const sort = req.query.sort || 'likes'; // likes, comments, new
+    
+    // Выбираем сортировку
+    let orderBy = '';
+    switch(sort) {
+        case 'likes':
+            orderBy = 'likes_count DESC';
+            break;
+        case 'comments':
+            orderBy = 'comments_count DESC';
+            break;
+        case 'new':
+            orderBy = 'p.created_at DESC';
+            break;
+        default:
+            orderBy = 'likes_count DESC';
+    }
+    
+    try {
+        // Запрос без проверки подписки (все каналы)
+        const posts = db.prepare(`
+            SELECT 
+                p.id,
+                p.content,
+                p.media_url,
+                p.created_at,
+                p.author_id,
+                u.username as author_name,
+                u.avatar as author_avatar,
+                c.name as source_name,
+                c.id as source_id,
+                c.avatar as source_avatar,
+                'channel' as source_type,
+                (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+                (SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = ?) as user_liked,
+                (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comments_count
+            FROM channel_posts p
+            INNER JOIN chats c ON p.channel_id = c.id
+            LEFT JOIN users u ON p.author_id = u.id
+            WHERE c.type = 'channel'
+            ORDER BY ${orderBy}
+            LIMIT ? OFFSET ?
+        `).all(userId, limit, offset);
+        
+        // Форматируем для отправки
+        const formattedPosts = posts.map(post => ({
+            ...post,
+            user_liked: post.user_liked === 1,
+            likes_count: post.likes_count || 0,
+            comments_count: post.comments_count || 0
+        }));
+        
+        res.json(formattedPosts);
+        
+    } catch (error) {
+        console.error('Ошибка получения популярных постов:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
