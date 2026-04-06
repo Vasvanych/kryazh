@@ -1132,6 +1132,7 @@
 <div id="callModal" class="call-modal">
     <div class="call-video-container">
         <video id="remoteVideo" class="remote-video" autoplay playsinline></video>
+        <audio id="remoteAudio" autoplay style="display: none;"></audio>
         <video id="localVideo" class="local-video" autoplay playsinline muted></video>
     </div>
     <div id="callStatus" class="call-status">Соединение...</div>
@@ -1296,164 +1297,191 @@
         ]
     };
 
-    async function startCall(partnerId, partnerName) {
-        if (!partnerId || currentChatType !== 'private') {
-            alert('Звонки доступны только в личных чатах');
-            return;
-        }
-        if (callActive) {
-            alert('Звонок уже активен');
-            return;
-        }
-        
-        currentCallPartner = partnerId;
-        
-        const modal = document.getElementById('callModal');
-        const callStatus = document.getElementById('callStatus');
-        const remoteVideo = document.getElementById('remoteVideo');
-        const localVideo = document.getElementById('localVideo');
-        
-        modal.classList.add('visible');
-        if (callStatus) callStatus.textContent = 'Запрос микрофона...';
-        
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-            console.log('✅ Микрофон получен');
-            
-            if (localVideo) {
-                localVideo.srcObject = localStream;
-                localVideo.style.display = 'none';
-            }
-            
-            peerConnection = new RTCPeerConnection(webrtcConfig);
-            
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate && currentCallPartner && socket) {
-                    socket.emit('call signal', {
-                        to: currentCallPartner,
-                        from: currentUser.id,
-                        signal: event.candidate
-                    });
-                }
-            };
-            
-            peerConnection.ontrack = (event) => {
-                if (remoteVideo) remoteVideo.srcObject = event.streams[0];
-                if (callStatus) callStatus.textContent = 'Разговор...';
-            };
-            
-            peerConnection.oniceconnectionstatechange = () => {
-                if (peerConnection.iceConnectionState === 'disconnected' ||
-                    peerConnection.iceConnectionState === 'failed' ||
-                    peerConnection.iceConnectionState === 'closed') {
-                    endCall();
-                }
-            };
-            
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
-            
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            
-            socket.emit('call start', {
-                to: partnerId,
-                from: currentUser.id,
-                fromName: currentUser.username,
-                offer: offer
-            });
-            
-            callActive = true;
-            isVideoOff = true;
-            
-            const videoBtn = document.getElementById('videoToggleBtn');
-            if (videoBtn) {
-                videoBtn.textContent = '📹❌';
-                videoBtn.style.background = '#ff4444';
-            }
-            
-        } catch (err) {
-            console.error('Ошибка:', err);
-            alert('Не удалось получить доступ к микрофону');
-            endCall();
-        }
+async function startCall(partnerId, partnerName) {
+    if (!partnerId || currentChatType !== 'private') {
+        alert('Звонки доступны только в личных чатах');
+        return;
+    }
+    if (callActive) {
+        alert('Звонок уже активен');
+        return;
     }
     
-    async function acceptCall(from, offer) {
-        currentCallPartner = from;
+    currentCallPartner = partnerId;
+    
+    const modal = document.getElementById('callModal');
+    const callStatus = document.getElementById('callStatus');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const localVideo = document.getElementById('localVideo');
+    const remoteAudio = document.getElementById('remoteAudio');
+    
+    modal.classList.add('visible');
+    callStatus.textContent = 'Запрос микрофона...';
+    
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        console.log('✅ Микрофон получен');
         
-        const modal = document.getElementById('callModal');
-        const callStatus = document.getElementById('callStatus');
-        const remoteVideo = document.getElementById('remoteVideo');
-        const localVideo = document.getElementById('localVideo');
-        
-        modal.classList.add('visible');
-        if (callStatus) callStatus.textContent = 'Запрос микрофона...';
-        
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-            console.log('✅ Микрофон получен');
-            
-            if (localVideo) {
-                localVideo.srcObject = localStream;
-                localVideo.style.display = 'none';
-            }
-            
-            peerConnection = new RTCPeerConnection(webrtcConfig);
-            
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate && currentCallPartner && socket) {
-                    socket.emit('call signal', {
-                        to: currentCallPartner,
-                        from: currentUser.id,
-                        signal: event.candidate
-                    });
-                }
-            };
-            
-            peerConnection.ontrack = (event) => {
-                if (remoteVideo) remoteVideo.srcObject = event.streams[0];
-                if (callStatus) callStatus.textContent = 'Разговор...';
-            };
-            
-            peerConnection.oniceconnectionstatechange = () => {
-                if (peerConnection.iceConnectionState === 'disconnected' ||
-                    peerConnection.iceConnectionState === 'failed' ||
-                    peerConnection.iceConnectionState === 'closed') {
-                    endCall();
-                }
-            };
-            
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
-            
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            
-            socket.emit('call accept', {
-                to: currentCallPartner,
-                from: currentUser.id,
-                answer: answer
-            });
-            
-            callActive = true;
-            isVideoOff = true;
-            
-            const videoBtn = document.getElementById('videoToggleBtn');
-            if (videoBtn) {
-                videoBtn.textContent = '📹❌';
-                videoBtn.style.background = '#ff4444';
-            }
-            
-        } catch (err) {
-            console.error('Ошибка:', err);
-            alert('Не удалось получить доступ к микрофону');
-            endCall();
+        if (localVideo) {
+            localVideo.srcObject = localStream;
+            localVideo.style.display = 'none';
         }
+        
+        if (remoteVideo) {
+            remoteVideo.muted = false;
+            remoteVideo.volume = 1.0;
+        }
+        
+        peerConnection = new RTCPeerConnection(webrtcConfig);
+        
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate && currentCallPartner && socket) {
+                socket.emit('call signal', {
+                    to: currentCallPartner,
+                    from: currentUser.id,
+                    signal: event.candidate
+                });
+            }
+        };
+        
+        peerConnection.ontrack = (event) => {
+            console.log('📞 Получен трек:', event.track.kind);
+            if (event.track.kind === 'audio' && remoteAudio) {
+                remoteAudio.srcObject = event.streams[0];
+                remoteAudio.play().catch(e => console.warn('Audio play error:', e));
+            }
+            if (remoteVideo && event.streams[0]) {
+                remoteVideo.srcObject = event.streams[0];
+            }
+            if (callStatus) callStatus.textContent = 'Разговор...';
+        };
+        
+        peerConnection.oniceconnectionstatechange = () => {
+            console.log('ICE состояние:', peerConnection.iceConnectionState);
+            if (peerConnection.iceConnectionState === 'disconnected' ||
+                peerConnection.iceConnectionState === 'failed' ||
+                peerConnection.iceConnectionState === 'closed') {
+                endCall();
+            }
+        };
+        
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
+        
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        socket.emit('call start', {
+            to: partnerId,
+            from: currentUser.id,
+            fromName: currentUser.username,
+            offer: offer
+        });
+        
+        callActive = true;
+        isVideoOff = true;
+        
+        const videoBtn = document.getElementById('videoToggleBtn');
+        if (videoBtn) {
+            videoBtn.textContent = '📹❌';
+            videoBtn.style.background = '#ff4444';
+        }
+        
+    } catch (err) {
+        console.error('Ошибка:', err);
+        alert('Не удалось получить доступ к микрофону');
+        endCall();
     }
+}
+
+async function acceptCall(from, offer) {
+    currentCallPartner = from;
+    
+    const modal = document.getElementById('callModal');
+    const callStatus = document.getElementById('callStatus');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const localVideo = document.getElementById('localVideo');
+    const remoteAudio = document.getElementById('remoteAudio');
+    
+    modal.classList.add('visible');
+    callStatus.textContent = 'Запрос микрофона...';
+    
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        console.log('✅ Микрофон получен');
+        
+        if (localVideo) {
+            localVideo.srcObject = localStream;
+            localVideo.style.display = 'none';
+        }
+        
+        if (remoteVideo) {
+            remoteVideo.muted = false;
+            remoteVideo.volume = 1.0;
+        }
+        
+        peerConnection = new RTCPeerConnection(webrtcConfig);
+        
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate && currentCallPartner && socket) {
+                socket.emit('call signal', {
+                    to: currentCallPartner,
+                    from: currentUser.id,
+                    signal: event.candidate
+                });
+            }
+        };
+        
+        peerConnection.ontrack = (event) => {
+            console.log('📞 Получен трек:', event.track.kind);
+            if (event.track.kind === 'audio' && remoteAudio) {
+                remoteAudio.srcObject = event.streams[0];
+                remoteAudio.play().catch(e => console.warn('Audio play error:', e));
+            }
+            if (remoteVideo && event.streams[0]) {
+                remoteVideo.srcObject = event.streams[0];
+            }
+            if (callStatus) callStatus.textContent = 'Разговор...';
+        };
+        
+        peerConnection.oniceconnectionstatechange = () => {
+            if (peerConnection.iceConnectionState === 'disconnected' ||
+                peerConnection.iceConnectionState === 'failed' ||
+                peerConnection.iceConnectionState === 'closed') {
+                endCall();
+            }
+        };
+        
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
+        
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        
+        socket.emit('call accept', {
+            to: currentCallPartner,
+            from: currentUser.id,
+            answer: answer
+        });
+        
+        callActive = true;
+        isVideoOff = true;
+        
+        const videoBtn = document.getElementById('videoToggleBtn');
+        if (videoBtn) {
+            videoBtn.textContent = '📹❌';
+            videoBtn.style.background = '#ff4444';
+        }
+        
+    } catch (err) {
+        console.error('Ошибка:', err);
+        alert('Не удалось получить доступ к микрофону');
+        endCall();
+    }
+}
     
     function endCall() {
         if (peerConnection) {
@@ -2401,7 +2429,22 @@
         });
         socket.on('call accepted', ({ from, answer }) => { if (peerConnection && callActive && currentCallPartner === from) { peerConnection.setRemoteDescription(new RTCSessionDescription(answer)).catch(err => console.error(err)); } });
         socket.on('call rejected', ({ from }) => { if (callActive && currentCallPartner === from) { alert('Звонок отклонён'); endCall(); } else if (!callActive) { alert('Звонок отклонён'); } });
-        socket.on('call signal', ({ from, signal }) => { if (peerConnection && callActive && currentCallPartner === from) { peerConnection.addIceCandidate(new RTCIceCandidate(signal)).catch(err => console.error(err)); } });
+        socket.on('call signal', ({ from, signal }) => {
+    if (!peerConnection || !callActive || currentCallPartner !== from) return;
+    
+    // Если это ICE candidate (имеет поле candidate)
+    if (signal && signal.candidate) {
+        peerConnection.addIceCandidate(new RTCIceCandidate(signal))
+            .catch(err => console.error('Ошибка ICE:', err));
+    }
+    // Если это SDP offer/answer
+    else if (signal && signal.type) {
+        console.log('Получен SDP, пропускаем ICE обработчик');
+    }
+    else {
+        console.warn('Неизвестный тип сигнала:', signal);
+    }
+});
         socket.on('call ended', ({ from }) => { if (callActive && currentCallPartner === from) { alert('Собеседник завершил звонок'); endCall(); } });
         
         // ============= ПОЛУЧЕНИЕ СООБЩЕНИЙ ОТ АДМИНИСТРАТОРА =============
