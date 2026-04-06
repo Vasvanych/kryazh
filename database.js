@@ -407,5 +407,66 @@ try {
     console.log('Колонки уже существуют или ошибка:', e.message);
 }
 
+// ============= ДОБАВЛЕНИЕ НОВЫХ КОЛОНОК ДЛЯ КАСТОМИЗАЦИИ ПРОФИЛЯ =============
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN status_text TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка status_text');
+} catch(e) { console.log('status_text уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN status_emoji TEXT DEFAULT '🟢'`);
+    console.log('✅ Добавлена колонка status_emoji');
+} catch(e) { console.log('status_emoji уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN status_type TEXT DEFAULT 'online'`);
+    console.log('✅ Добавлена колонка status_type');
+} catch(e) { console.log('status_type уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка bio');
+} catch(e) { console.log('bio уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN banner TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка banner');
+} catch(e) { console.log('banner уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN city TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка city');
+} catch(e) { console.log('city уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN birthday DATE`);
+    console.log('✅ Добавлена колонка birthday');
+} catch(e) { console.log('birthday уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN website TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка website');
+} catch(e) { console.log('website уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN social_vk TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка social_vk');
+} catch(e) { console.log('social_vk уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN social_tg TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка social_tg');
+} catch(e) { console.log('social_tg уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN social_custom TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка social_custom');
+} catch(e) { console.log('social_custom уже существует'); }
+
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN social_custom_name TEXT DEFAULT ''`);
+    console.log('✅ Добавлена колонка social_custom_name');
+} catch(e) { console.log('social_custom_name уже существует'); }
+
 // Экспортируем сам объект db (со всеми добавленными методами)
 module.exports = db;
