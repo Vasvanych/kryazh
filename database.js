@@ -395,5 +395,17 @@ try {
     console.log('⚠️ Ошибка создания post_comments:', err.message);
 }
 
+// Добавь в конец database.js
+try {
+    // Удаляем старые колонки (если есть) и добавляем новые
+    db.exec(`ALTER TABLE users ADD COLUMN social_vk TEXT DEFAULT ''`);
+    db.exec(`ALTER TABLE users ADD COLUMN social_tg TEXT DEFAULT ''`);
+    db.exec(`ALTER TABLE users ADD COLUMN social_custom TEXT DEFAULT ''`);
+    db.exec(`ALTER TABLE users ADD COLUMN social_custom_name TEXT DEFAULT ''`);
+    console.log('✅ Добавлены колонки для соцсетей (ВК, Telegram, сайт)');
+} catch(e) {
+    console.log('Колонки уже существуют или ошибка:', e.message);
+}
+
 // Экспортируем сам объект db (со всеми добавленными методами)
 module.exports = db;

@@ -2782,4 +2782,100 @@ app.get('/api/admin/messages', requireAuth, (req, res) => {
     }
 });
 
+/**
+ * Получить полный профиль пользователя (с кастомизацией)
+ * GET /api/users/:id/profile
+ */
+app.get('/api/users/:id/profile', requireAuth, (req, res) => {
+    const userId = parseInt(req.params.id);
+    
+    try {
+        const user = db.prepare(`
+            SELECT id, username, avatar, banner, role, created_at,
+                   status_type, status_text, status_emoji,
+                   bio, city, birthday, website,
+                   social_vk, social_tg, social_custom, social_custom_name
+            FROM users WHERE id = ?
+        `).get(userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        
+        res.json(user);
+    } catch (error) {
+        console.error('Ошибка получения профиля:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+
+
+/**
+ * Обновить статус пользователя
+ * PUT /api/users/status
+ */
+app.put('/api/users/status', requireAuth, (req, res) => {
+    const { status_type, status_text, status_emoji } = req.body;
+    const userId = req.session.userId;
+    
+    try {
+        db.prepare(`
+            UPDATE users 
+            SET status_type = ?, status_text = ?, status_emoji = ?
+            WHERE id = ?
+        `).run(status_type || 'online', status_text || '', status_emoji || '🟢', userId);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Ошибка обновления статуса:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * Обновить профиль пользователя
+ * PUT /api/users/profile
+ */
+app.put('/api/users/profile', requireAuth, (req, res) => {
+    const { 
+        bio, city, birthday, website,
+        social_vk, social_tg, social_custom, social_custom_name 
+    } = req.body;
+    const userId = req.session.userId;
+    
+    try {
+        db.prepare(`
+            UPDATE users 
+            SET bio = ?, city = ?, birthday = ?, 
+                website = ?,
+                social_vk = ?, social_tg = ?, social_custom = ?, social_custom_name = ?
+            WHERE id = ?
+        `).run(
+            bio || '', city || '', birthday || null, 
+            website || '',
+            social_vk || '', social_tg || '', social_custom || '', social_custom_name || '',
+            userId
+        );
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Ошибка обновления профиля:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+/**
+ * Загрузить обложку профиля
+ * POST /api/users/banner
+ */
+app.post('/api/users/banner', requireAuth, uploadAvatar.single('banner'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'Нет файла' });
+    }
+    
+    const bannerUrl = `/uploads/avatars/${req.file.filename}`;
+    db.prepare('UPDATE users SET banner = ? WHERE id = ?').run(bannerUrl, req.session.userId);
+    res.json({ bannerUrl });
+});
+
 server.listen(port, () => console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`));

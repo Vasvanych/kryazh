@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Редактирование профиля - Kryazh</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --border: #e0e0e0;
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --primary: #764ba2;
+        }
+        
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --surface: #1e1e1e;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --text-secondary: #aaaaaa;
+            --primary: #9b6fc4;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 14px;
+        }
+        
+        .card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .status-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        
+        .status-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .status-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .banner-preview {
+            width: 100%;
+            height: 150px;
+            background: var(--border);
+            border-radius: 16px;
+            margin-bottom: 12px;
+            object-fit: cover;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        
+        .social-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .social-icon {
+            font-size: 20px;
+            min-width: 36px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/profile.html" class="back-btn">← Назад к профилю</a>
+        
+        <!-- Статус -->
+        <div class="card">
+            <h3>😊 Мой статус</h3>
+            <div class="form-group">
+                <label>Статус</label>
+                <div class="status-buttons" id="statusButtons">
+                    <button class="status-btn" data-status="online">🟢 Онлайн</button>
+                    <button class="status-btn" data-status="away">🌙 Отошёл</button>
+                    <button class="status-btn" data-status="busy">🔴 Не беспокоить</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Текст статуса (необязательно)</label>
+                <input type="text" id="statusText" placeholder="Например: работаю, сплю, в спортзале...">
+            </div>
+        </div>
+        
+        <!-- Обложка -->
+        <div class="card">
+            <h3>🖼️ Обложка профиля</h3>
+            <img id="bannerPreview" class="banner-preview" style="display: none;">
+            <button id="uploadBannerBtn" class="btn" style="background: var(--text-secondary);">📷 Загрузить обложку</button>
+            <input type="file" id="bannerInput" accept="image/*" style="display: none;">
+        </div>
+        
+        <!-- О себе -->
+        <div class="card">
+            <h3>📝 О себе</h3>
+            <div class="form-group">
+                <label>Bio</label>
+                <textarea id="bio" placeholder="Расскажите о себе..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Город</label>
+                <input type="text" id="city" placeholder="Москва, Санкт-Петербург...">
+            </div>
+            <div class="form-group">
+                <label>Дата рождения</label>
+                <input type="date" id="birthday">
+            </div>
+        </div>
+        
+        <!-- Социальные сети -->
+<!-- Социальные сети -->
+<div class="card">
+    <h3>🔗 Социальные сети</h3>
+    
+    <div class="form-group">
+        <label>Сайт / Блог</label>
+        <input type="url" id="website" placeholder="https://...">
+    </div>
+    
+    <div class="form-group">
+        <div class="social-inputs">
+            <span class="social-icon">📘</span>
+            <input type="text" id="vk" placeholder="ВКонтакте (ID или username)">
+        </div>
+        <div class="hint">Пример: id123456789 или durov</div>
+    </div>
+    
+    <div class="form-group">
+        <div class="social-inputs">
+            <span class="social-icon">📱</span>
+            <input type="text" id="tg" placeholder="Telegram (username)">
+        </div>
+        <div class="hint">Без @, только username</div>
+    </div>
+    
+    <div class="form-group">
+        <div class="social-inputs">
+            <span class="social-icon">🔗</span>
+            <input type="text" id="customUrl" placeholder="Ссылка на другую соцсеть">
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+            <input type="text" id="customName" placeholder="Название (YouTube, Discord, Twitch...)">
+        </div>
+    </div>
+</div>
+    
+    <script>
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        
+        let currentUser = null;
+        
+        async function loadProfile() {
+            const res = await fetch('/api/me', { credentials: 'include' });
+            if (!res.ok) { window.location.href = '/login.html'; return; }
+            currentUser = await res.json();
+            
+            // Загружаем полный профиль
+            const profileRes = await fetch(`/api/users/${currentUser.id}/profile`, { credentials: 'include' });
+            const profile = await profileRes.json();
+            
+            // Статус
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                if (btn.dataset.status === profile.status_type) {
+                    btn.classList.add('active');
+                }
+            });
+            document.getElementById('statusText').value = profile.status_text || '';
+            
+            // Обложка
+            if (profile.banner) {
+                const bannerImg = document.getElementById('bannerPreview');
+                bannerImg.src = profile.banner;
+                bannerImg.style.display = 'block';
+            }
+            
+            // О себе
+            document.getElementById('bio').value = profile.bio || '';
+            document.getElementById('city').value = profile.city || '';
+            document.getElementById('birthday').value = profile.birthday || '';
+            
+            // Соцсети
+    document.getElementById('website').value = profile.website || '';
+    document.getElementById('vk').value = profile.social_vk || '';
+    document.getElementById('tg').value = profile.social_tg || '';
+    document.getElementById('customUrl').value = profile.social_custom || '';
+    document.getElementById('customName').value = profile.social_custom_name || '';
+
+        }
+        
+        // Статус
+        document.querySelectorAll('.status-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            };
+        });
+        
+        // Обложка
+        document.getElementById('uploadBannerBtn').onclick = () => {
+            document.getElementById('bannerInput').click();
+        };
+        
+        document.getElementById('bannerInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('banner', file);
+            
+            const res = await fetch('/api/users/banner', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                const bannerImg = document.getElementById('bannerPreview');
+                bannerImg.src = data.bannerUrl;
+                bannerImg.style.display = 'block';
+                alert('✅ Обложка обновлена');
+            } else {
+                alert('❌ Ошибка загрузки');
+            }
+        };
+        
+        // Сохранение
+        document.getElementById('saveBtn').onclick = async () => {
+            const status_type = document.querySelector('.status-btn.active').dataset.status;
+            const status_text = document.getElementById('statusText').value;
+            
+            // Обновляем статус
+            await fetch('/api/users/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status_type, status_text })
+            });
+            
+            // Обновляем профиль
+            const bio = document.getElementById('bio').value;
+            const city = document.getElementById('city').value;
+            const birthday = document.getElementById('birthday').value;
+            const website = document.getElementById('website').value;
+            const social_vk = document.getElementById('vk').value;
+            const social_tg = document.getElementById('tg').value;
+            const social_custom = document.getElementById('customUrl').value;
+            const social_custom_name = document.getElementById('customName').value;
+            
+    await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            bio, city, birthday, website,
+            social_vk, social_tg, social_custom, social_custom_name
+        })
+    });
+            
+            alert('✅ Профиль обновлён!');
+            window.location.href = '/profile.html';
+        };
+        
+        loadProfile();
+    </script>
+</body>
+</html>
