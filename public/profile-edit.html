@@ -14,10 +14,8 @@
             --text: #1a1a1a;
             --text-secondary: #666666;
             --primary: #764ba2;
-            --primary-dark: #5a3a7a;
-            --success: #4caf50;
         }
-
+        
         [data-theme="dark"] {
             --bg: #0f0f0f;
             --surface: #1e1e1e;
@@ -27,61 +25,205 @@
             --primary: #9b6fc4;
         }
 
-        [data-theme="wild"] {
-            --bg: #2d3e2b;
-            --surface: #4a6e3a;
-            --border: #6a8e5a;
-            --text: #f5e6c4;
-            --text-secondary: #d4c4a4;
-            --primary: #c9a87b;
-        }
+/* ============= НОВЫЕ ТЕМЫ (исправленные) ============= */
 
-        [data-theme="barbie"] {
-            --bg: #ffd1dc;
-            --surface: #fff0f3;
-            --border: #ffb6c1;
-            --text: #c21e56;
-            --text-secondary: #e8436e;
-            --primary: #ff69b4;
-        }
+/* 1. Night Shift — тёмно-синяя */
+[data-theme="nightshift"] {
+    --bg: #0a0e1a;
+    --sidebar-bg: #141a2e;
+    --surface: #141a2e;
+    --border: #2a3348;
+    --text: #e0e0e0;
+    --text-secondary: #8892b0;
+    --text-muted: #5a6680;
+    --primary: #5a6abf;
+    --primary-dark: #4a5abf;
+    --primary-light: #2a3560;
+    --msg-sent: #5a6abf;
+    --msg-received: #1e2a3a;
+    --msg-received-text: #e0e0e0;
+    --hover: #1a2035;
+    --active: #1e2a3a;
+    --online: #5a6abf;
+    --header-bg: #141a2e;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
 
-        [data-theme="cyber"] {
-            --bg: #0a0a0f;
-            --surface: #15151f;
-            --border: #2a2a3a;
-            --text: #00ffff;
-            --text-secondary: #66ffff;
-            --primary: #ff00ff;
-        }
+/* 2. Ocean Deep — глубокий океан */
+[data-theme="ocean"] {
+    --bg: #0a1a2e;
+    --sidebar-bg: #0f2840;
+    --surface: #0f2840;
+    --border: #1a3a55;
+    --text: #c8e8ff;
+    --text-secondary: #8ab3cf;
+    --text-muted: #4a6a8a;
+    --primary: #1e88e5;
+    --primary-dark: #0d6efd;
+    --primary-light: #0a3a60;
+    --msg-sent: #1e88e5;
+    --msg-received: #1a3a55;
+    --msg-received-text: #c8e8ff;
+    --hover: #0f2840;
+    --active: #1a3a55;
+    --online: #1e88e5;
+    --header-bg: #0f2840;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
 
-        [data-theme="ПАША"] {
-            --bg: #edeef0;
-            --surface: #ffffff;
-            --border: #d3d9de;
-            --text: #2c3e50;
-            --text-secondary: #6c7a89;
-            --primary: #5181b8;
-        }
+/* 3. Halloween — оранжево-чёрный */
+[data-theme="halloween"] {
+    --bg: #1a0a0a;
+    --sidebar-bg: #2a1515;
+    --surface: #2a1515;
+    --border: #8b4513;
+    --text: #ffcc66;
+    --text-secondary: #ffaa33;
+    --text-muted: #cc8844;
+    --primary: #ff6600;
+    --primary-dark: #cc5500;
+    --primary-light: #4a2010;
+    --msg-sent: #ff6600;
+    --msg-received: #3a2020;
+    --msg-received-text: #ffcc66;
+    --hover: #2a1515;
+    --active: #3a2020;
+    --online: #ff6600;
+    --header-bg: #2a1515;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
 
-        [data-theme="newhorizons"] {
-            --bg: #9fd3c7;
-            --surface: #fffef7;
-            --border: #e2dcc7;
-            --text: #5b6e4a;
-            --text-secondary: #8b9a6e;
-            --primary: #f7b05e;
-        }
+/* 4. Christmas — красно-зелёный */
+[data-theme="christmas"] {
+    --bg: #0a2e0a;
+    --sidebar-bg: #1a3a1a;
+    --surface: #1a3a1a;
+    --border: #2e5e2e;
+    --text: #ffe0e0;
+    --text-secondary: #ffaaaa;
+    --text-muted: #cc8888;
+    --primary: #e53935;
+    --primary-dark: #c62828;
+    --primary-light: #4a1515;
+    --msg-sent: #e53935;
+    --msg-received: #0a2e0a;
+    --msg-received-text: #ffe0e0;
+    --hover: #1a3a1a;
+    --active: #2a4a2a;
+    --online: #e53935;
+    --header-bg: #1a3a1a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
 
-        [data-theme="digitalcircus"] {
-            --bg: #0f0a1a;
-            --surface: #1a0f2e;
-            --border: #ff3366;
-            --text: #ffffff;
-            --text-secondary: #ffcc33;
-            --primary: #ff3366;
-            --primary-dark: #cc0044;
-        }
+/* 5. Matcha — зелёный чай */
+[data-theme="matcha"] {
+    --bg: #d4e8d4;
+    --sidebar-bg: #e8f5e8;
+    --surface: #ffffff;
+    --border: #b8d4b8;
+    --text: #3a5e3a;
+    --text-secondary: #5e8e5e;
+    --text-muted: #8ab88a;
+    --primary: #6b8e23;
+    --primary-dark: #556b2f;
+    --primary-light: #c8e0c8;
+    --msg-sent: #6b8e23;
+    --msg-received: #e8f5e8;
+    --msg-received-text: #3a5e3a;
+    --hover: #e8f5e8;
+    --active: #d4e8d4;
+    --online: #6b8e23;
+    --header-bg: #e8f5e8;
+    --shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
 
+/* 6. Midnight Purple — фиолетовая ночь */
+[data-theme="midnight"] {
+    --bg: #1a0a2e;
+    --sidebar-bg: #2a1545;
+    --surface: #2a1545;
+    --border: #3a2560;
+    --text: #e0c8ff;
+    --text-secondary: #b08aff;
+    --text-muted: #8a60cc;
+    --primary: #9b59b6;
+    --primary-dark: #8e44ad;
+    --primary-light: #3a2060;
+    --msg-sent: #9b59b6;
+    --msg-received: #1a0a2e;
+    --msg-received-text: #e0c8ff;
+    --hover: #2a1545;
+    --active: #3a2060;
+    --online: #9b59b6;
+    --header-bg: #2a1545;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* 7. Coffee — коричневый, тёплый */
+[data-theme="coffee"] {
+    --bg: #e8d8c8;
+    --sidebar-bg: #f5ebe0;
+    --surface: #ffffff;
+    --border: #d4c0a8;
+    --text: #4a3520;
+    --text-secondary: #7a5a3a;
+    --text-muted: #a88a6a;
+    --primary: #a0522d;
+    --primary-dark: #8b4513;
+    --primary-light: #e8d0c0;
+    --msg-sent: #a0522d;
+    --msg-received: #f5ebe0;
+    --msg-received-text: #4a3520;
+    --hover: #f5ebe0;
+    --active: #e8d8c8;
+    --online: #a0522d;
+    --header-bg: #f5ebe0;
+    --shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* 8. Retro Wave — синтвейв, неон */
+[data-theme="retrowave"] {
+    --bg: #1a0a2e;
+    --sidebar-bg: #2a1545;
+    --surface: #2a1545;
+    --border: #ff00ff;
+    --text: #00ffff;
+    --text-secondary: #ff66cc;
+    --text-muted: #aa44aa;
+    --primary: #ff00ff;
+    --primary-dark: #cc00cc;
+    --primary-light: #4a2060;
+    --msg-sent: #ff00ff;
+    --msg-received: #1a0a2e;
+    --msg-received-text: #00ffff;
+    --hover: #2a1545;
+    --active: #3a2060;
+    --online: #00ffff;
+    --header-bg: #2a1545;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* 9. Forest — тёмный лес */
+[data-theme="forest"] {
+    --bg: #1a2e1a;
+    --sidebar-bg: #2a3e2a;
+    --surface: #2a3e2a;
+    --border: #3a5e3a;
+    --text: #d4e8d4;
+    --text-secondary: #a8c8a8;
+    --text-muted: #6a9a6a;
+    --primary: #4caf50;
+    --primary-dark: #388e3c;
+    --primary-light: #2a5e2a;
+    --msg-sent: #4caf50;
+    --msg-received: #1a2e1a;
+    --msg-received-text: #d4e8d4;
+    --hover: #2a3e2a;
+    --active: #3a5e3a;
+    --online: #4caf50;
+    --header-bg: #2a3e2a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+}       
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
@@ -146,12 +288,6 @@
             min-height: 80px;
         }
         
-        .hint {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-top: 5px;
-        }
-        
         .status-buttons {
             display: flex;
             gap: 10px;
@@ -182,25 +318,19 @@
             border-radius: 16px;
             margin-bottom: 12px;
             object-fit: cover;
-            display: none;
         }
         
         .btn {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             background: var(--primary);
             color: white;
             border: none;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             margin-top: 8px;
-            transition: background 0.2s;
-        }
-        
-        .btn:hover {
-            background: var(--primary-dark);
         }
         
         .social-inputs {
@@ -214,22 +344,11 @@
             min-width: 36px;
             text-align: center;
         }
-        
-        .success-msg {
-            background: var(--success);
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            display: none;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="/profile.html" class="back-btn">← Назад к профилю</a>
-        
-        <div id="successMsg" class="success-msg">✅ Профиль обновлён!</div>
         
         <!-- Статус -->
         <div class="card">
@@ -251,7 +370,7 @@
         <!-- Обложка -->
         <div class="card">
             <h3>🖼️ Обложка профиля</h3>
-            <img id="bannerPreview" class="banner-preview">
+            <img id="bannerPreview" class="banner-preview" style="display: none;">
             <button id="uploadBannerBtn" class="btn" style="background: var(--text-secondary);">📷 Загрузить обложку</button>
             <input type="file" id="bannerInput" accept="image/*" style="display: none;">
         </div>
@@ -274,227 +393,156 @@
         </div>
         
         <!-- Социальные сети -->
-        <div class="card">
-            <h3>🔗 Социальные сети</h3>
-            <div class="form-group">
-                <label>Сайт / Блог</label>
-                <input type="url" id="website" placeholder="https://...">
-            </div>
-            <div class="form-group">
-                <div class="social-inputs">
-                    <span class="social-icon">📘</span>
-                    <input type="text" id="vk" placeholder="ВКонтакте (ID или username)">
-                </div>
-                <div class="hint">Пример: id123456789 или durov</div>
-            </div>
-            <div class="form-group">
-                <div class="social-inputs">
-                    <span class="social-icon">📱</span>
-                    <input type="text" id="tg" placeholder="Telegram (username)">
-                </div>
-                <div class="hint">Без @, только username</div>
-            </div>
-            <div class="form-group">
-                <div class="social-inputs">
-                    <span class="social-icon">🔗</span>
-                    <input type="text" id="customUrl" placeholder="Ссылка на другую соцсеть">
-                </div>
-                <div class="form-group" style="margin-top: 8px;">
-                    <input type="text" id="customName" placeholder="Название (YouTube, Discord, Twitch...)">
-                </div>
-            </div>
-        </div>
-        
-        <button id="saveBtn" class="btn">💾 Сохранить изменения</button>
+<!-- Социальные сети -->
+<div class="card">
+    <h3>🔗 Социальные сети</h3>
+    
+    <div class="form-group">
+        <label>Сайт / Блог</label>
+        <input type="url" id="website" placeholder="https://...">
     </div>
     
+    <div class="form-group">
+        <div class="social-inputs">
+            <span class="social-icon">📘</span>
+            <input type="text" id="vk" placeholder="ВКонтакте (ID или username)">
+        </div>
+        <div class="hint">Пример: id123456789 или durov</div>
+    </div>
+    
+    <div class="form-group">
+        <div class="social-inputs">
+            <span class="social-icon">📱</span>
+            <input type="text" id="tg" placeholder="Telegram (username)">
+        </div>
+        <div class="hint">Без @, только username</div>
+    </div>
+    
+    <div class="form-group">
+        <div class="social-inputs">
+            <span class="social-icon">🔗</span>
+            <input type="text" id="customUrl" placeholder="Ссылка на другую соцсеть">
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+            <input type="text" id="customName" placeholder="Название (YouTube, Discord, Twitch...)">
+        </div>
+    </div>
+</div>
+    
     <script>
-        // Применяем тему
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
         
         let currentUser = null;
         
         async function loadProfile() {
-            try {
-                const res = await fetch('/api/me', { credentials: 'include' });
-                if (!res.ok) { 
-                    window.location.href = '/login.html'; 
-                    return; 
-                }
-                currentUser = await res.json();
-                
-                // Загружаем полный профиль
-                const profileRes = await fetch(`/api/users/${currentUser.id}/profile`, { credentials: 'include' });
-                if (!profileRes.ok) {
-                    console.error('Ошибка загрузки профиля:', profileRes.status);
-                    return;
-                }
-                const profile = await profileRes.json();
-                
-                // Статус
-                const statusBtns = document.querySelectorAll('.status-btn');
-                if (statusBtns.length) {
-                    statusBtns.forEach(btn => {
-                        if (btn.dataset.status === profile.status_type) {
-                            btn.classList.add('active');
-                        }
-                    });
-                }
-                
-                const statusTextInput = document.getElementById('statusText');
-                if (statusTextInput) statusTextInput.value = profile.status_text || '';
-                
-                // Обложка
-                if (profile.banner) {
-                    const bannerImg = document.getElementById('bannerPreview');
-                    if (bannerImg) {
-                        bannerImg.src = profile.banner;
-                        bannerImg.style.display = 'block';
-                    }
-                }
-                
-                // О себе
-                const bioInput = document.getElementById('bio');
-                if (bioInput) bioInput.value = profile.bio || '';
-                
-                const cityInput = document.getElementById('city');
-                if (cityInput) cityInput.value = profile.city || '';
-                
-                const birthdayInput = document.getElementById('birthday');
-                if (birthdayInput) birthdayInput.value = profile.birthday || '';
-                
-                // Соцсети
-                const websiteInput = document.getElementById('website');
-                if (websiteInput) websiteInput.value = profile.website || '';
-                
-                const vkInput = document.getElementById('vk');
-                if (vkInput) vkInput.value = profile.social_vk || '';
-                
-                const tgInput = document.getElementById('tg');
-                if (tgInput) tgInput.value = profile.social_tg || '';
-                
-                const customUrlInput = document.getElementById('customUrl');
-                if (customUrlInput) customUrlInput.value = profile.social_custom || '';
-                
-                const customNameInput = document.getElementById('customName');
-                if (customNameInput) customNameInput.value = profile.social_custom_name || '';
-                
-            } catch (err) {
-                console.error('Ошибка загрузки профиля:', err);
-            }
-        }
-        
-        // Выбор статуса
-        const statusBtns = document.querySelectorAll('.status-btn');
-        if (statusBtns.length) {
-            statusBtns.forEach(btn => {
-                btn.onclick = () => {
-                    statusBtns.forEach(b => b.classList.remove('active'));
+            const res = await fetch('/api/me', { credentials: 'include' });
+            if (!res.ok) { window.location.href = '/login.html'; return; }
+            currentUser = await res.json();
+            
+            // Загружаем полный профиль
+            const profileRes = await fetch(`/api/users/${currentUser.id}/profile`, { credentials: 'include' });
+            const profile = await profileRes.json();
+            
+            // Статус
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                if (btn.dataset.status === profile.status_type) {
                     btn.classList.add('active');
-                };
+                }
             });
+            document.getElementById('statusText').value = profile.status_text || '';
+            
+            // Обложка
+            if (profile.banner) {
+                const bannerImg = document.getElementById('bannerPreview');
+                bannerImg.src = profile.banner;
+                bannerImg.style.display = 'block';
+            }
+            
+            // О себе
+            document.getElementById('bio').value = profile.bio || '';
+            document.getElementById('city').value = profile.city || '';
+            document.getElementById('birthday').value = profile.birthday || '';
+            
+            // Соцсети
+    document.getElementById('website').value = profile.website || '';
+    document.getElementById('vk').value = profile.social_vk || '';
+    document.getElementById('tg').value = profile.social_tg || '';
+    document.getElementById('customUrl').value = profile.social_custom || '';
+    document.getElementById('customName').value = profile.social_custom_name || '';
+
         }
         
-        // Загрузка обложки
-        const uploadBannerBtn = document.getElementById('uploadBannerBtn');
-        const bannerInput = document.getElementById('bannerInput');
-        const bannerPreview = document.getElementById('bannerPreview');
-        
-        if (uploadBannerBtn) {
-            uploadBannerBtn.onclick = () => {
-                if (bannerInput) bannerInput.click();
+        // Статус
+        document.querySelectorAll('.status-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
             };
-        }
+        });
         
-        if (bannerInput) {
-            bannerInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                const formData = new FormData();
-                formData.append('banner', file);
-                
-                try {
-                    const res = await fetch('/api/users/banner', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (bannerPreview) {
-                            bannerPreview.src = data.bannerUrl;
-                            bannerPreview.style.display = 'block';
-                        }
-                        alert('✅ Обложка обновлена');
-                    } else {
-                        alert('❌ Ошибка загрузки');
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert('Ошибка соединения');
-                }
-            };
-        }
+        // Обложка
+        document.getElementById('uploadBannerBtn').onclick = () => {
+            document.getElementById('bannerInput').click();
+        };
         
-        // Сохранение всех изменений
-        const saveBtn = document.getElementById('saveBtn');
-        if (saveBtn) {
-            saveBtn.onclick = async () => {
-                // Статус
-                const activeStatusBtn = document.querySelector('.status-btn.active');
-                const status_type = activeStatusBtn ? activeStatusBtn.dataset.status : 'online';
-                const status_text = document.getElementById('statusText')?.value || '';
-                
-                try {
-                    // Обновляем статус
-                    await fetch('/api/users/status', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status_type, status_text })
-                    });
-                    
-                    // Обновляем профиль
-                    const bio = document.getElementById('bio')?.value || '';
-                    const city = document.getElementById('city')?.value || '';
-                    const birthday = document.getElementById('birthday')?.value || '';
-                    const website = document.getElementById('website')?.value || '';
-                    const social_vk = document.getElementById('vk')?.value || '';
-                    const social_tg = document.getElementById('tg')?.value || '';
-                    const social_custom = document.getElementById('customUrl')?.value || '';
-                    const social_custom_name = document.getElementById('customName')?.value || '';
-                    
-                    const profileRes = await fetch('/api/users/profile', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            bio, city, birthday, website,
-                            social_vk, social_tg, social_custom, social_custom_name
-                        })
-                    });
-                    
-                    if (profileRes.ok) {
-                        const successMsg = document.getElementById('successMsg');
-                        if (successMsg) {
-                            successMsg.style.display = 'block';
-                            setTimeout(() => {
-                                successMsg.style.display = 'none';
-                                window.location.href = '/profile.html';
-                            }, 1500);
-                        } else {
-                            window.location.href = '/profile.html';
-                        }
-                    } else {
-                        const err = await profileRes.json();
-                        alert('❌ Ошибка: ' + (err.error || 'Не удалось сохранить'));
-                    }
-                } catch (err) {
-                    console.error('Ошибка сохранения:', err);
-                    alert('❌ Ошибка соединения');
-                }
-            };
-        }
+        document.getElementById('bannerInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('banner', file);
+            
+            const res = await fetch('/api/users/banner', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                const bannerImg = document.getElementById('bannerPreview');
+                bannerImg.src = data.bannerUrl;
+                bannerImg.style.display = 'block';
+                alert('✅ Обложка обновлена');
+            } else {
+                alert('❌ Ошибка загрузки');
+            }
+        };
+        
+        // Сохранение
+        document.getElementById('saveBtn').onclick = async () => {
+            const status_type = document.querySelector('.status-btn.active').dataset.status;
+            const status_text = document.getElementById('statusText').value;
+            
+            // Обновляем статус
+            await fetch('/api/users/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status_type, status_text })
+            });
+            
+            // Обновляем профиль
+            const bio = document.getElementById('bio').value;
+            const city = document.getElementById('city').value;
+            const birthday = document.getElementById('birthday').value;
+            const website = document.getElementById('website').value;
+            const social_vk = document.getElementById('vk').value;
+            const social_tg = document.getElementById('tg').value;
+            const social_custom = document.getElementById('customUrl').value;
+            const social_custom_name = document.getElementById('customName').value;
+            
+    await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            bio, city, birthday, website,
+            social_vk, social_tg, social_custom, social_custom_name
+        })
+    });
+            
+            alert('✅ Профиль обновлён!');
+            window.location.href = '/profile.html';
+        };
         
         loadProfile();
     </script>
