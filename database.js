@@ -33,7 +33,31 @@ db.pragma('journal_mode = WAL');
 // ============= СОЗДАНИЕ ТАБЛИЦ =============
 db.exec(`
 
+-- ТАБЛИЦА ДОСТИЖЕНИЙ (что за ачивки)
+CREATE TABLE IF NOT EXISTS achievements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    icon TEXT DEFAULT '🏆',
+    rarity TEXT DEFAULT 'common',
+    type TEXT DEFAULT 'auto',        -- 'auto' = автоматическая, 'manual' = ручная (выдаёт админ)
+    condition TEXT DEFAULT '',       -- условие для автоматических (например: 'messages:100')
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
+    -- ТАБЛИЦА ВЫДАННЫХ АЧИВОК
+    CREATE TABLE IF NOT EXISTS user_achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        achievement_id INTEGER NOT NULL,
+        awarded_by INTEGER,
+        awarded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_viewed INTEGER DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (achievement_id) REFERENCES achievements(id) ON DELETE CASCADE,
+        FOREIGN KEY (awarded_by) REFERENCES users(id) ON DELETE SET NULL,
+        UNIQUE(user_id, achievement_id)
+    );
 
         -- КОММЕНТАРИИ К ПОСТАМ
     CREATE TABLE IF NOT EXISTS post_comments (
@@ -214,8 +238,13 @@ columns.forEach(sql => {
 // ============= СОЗДАЁМ ИНДЕКСЫ =============
 try {
     db.exec(`
+
+        CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
+        CREATE INDEX IF NOT EXISTS idx_user_achievements_viewed ON user_achievements(is_viewed);
+        CREATE INDEX IF NOT EXISTS idx_achievements_rarity ON achievements(rarity); 
+
         CREATE INDEX IF NOT EXISTS idx_admin_messages_user ON admin_messages(user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_messages_created ON admin_messages(created_at);
+        CREATE INDEX IF NOT EXISTS idx_admin_messages_created ON admin_messages(created_at);
 
         CREATE INDEX IF NOT EXISTS idx_post_comments_post ON post_comments(post_id);
         CREATE INDEX IF NOT EXISTS idx_post_comments_user ON post_comments(user_id);
@@ -467,6 +496,111 @@ try {
     db.exec(`ALTER TABLE users ADD COLUMN social_custom_name TEXT DEFAULT ''`);
     console.log('✅ Добавлена колонка social_custom_name');
 } catch(e) { console.log('social_custom_name уже существует'); }
+
+// Добавляем недостающие колонки (если таблица уже была)
+try {
+    db.exec(`ALTER TABLE achievements ADD COLUMN type TEXT DEFAULT 'auto'`);
+} catch(e) {}
+try {
+    db.exec(`ALTER TABLE achievements ADD COLUMN condition TEXT DEFAULT ''`);
+} catch(e) {}
+
+// ============= ДОБАВЛЕНИЕ БАЗОВЫХ ДОСТИЖЕНИЙ =============
+try {
+    const count = db.prepare('SELECT COUNT(*) as count FROM achievements').get();
+    if (count.count === 0) {
+        db.exec(`
+            INSERT INTO achievements (name, description, icon, rarity, type, condition) VALUES
+            -- Автоматические ачивки
+            ('Первый шаг', 'Зарегистрироваться на платформе', '👋', 'common', 'auto', 'registration'),
+            ('Говорун', 'Отправить 100 сообщений', '💬', 'common', 'auto', 'messages:100'),
+            ('Мастер диалога', 'Отправить 1000 сообщений', '🎙️', 'rare', 'auto', 'messages:1000'),
+            ('Легенда чатов', 'Отправить 10000 сообщений', '👑', 'legendary', 'auto', 'messages:10000'),
+            ('Постмейкер', 'Создать первый пост', '📝', 'common', 'auto', 'first_post'),
+            ('Популярный автор', 'Получить 100 лайков', '❤️', 'rare', 'auto', 'likes:100'),
+            ('Звезда канала', 'Создать канал с 50+ подписчиками', '⭐', 'epic', 'auto', 'channel_subscribers:50'),
+            ('Душа компании', 'Пригласить 10 друзей', '👥', 'rare', 'auto', 'referrals:10'),
+            ('Коллекционер', 'Получить 5 разных ачивок', '🏆', 'epic', 'auto', 'collector'),
+            
+            -- Ручные ачивки (выдаются админом)
+            ('Помощник проекта', 'Помочь в развитии мессенджера', '🤝', 'rare', 'manual', ''),
+            ('Бета-тестер', 'Участвовать в тестировании', '🧪', 'epic', 'manual', ''),
+            ('Основатель', 'Быть среди первых пользователей', '👑', 'legendary', 'manual', '');
+        `);
+        console.log('✅ Добавлены базовые достижения');
+    }
+} catch(e) {
+    console.log('⚠️ Ошибка добавления достижений:', e.message);
+}
+
+// ============= ОБНОВЛЕНИЕ УСЛОВИЙ АЧИВОК =============
+try {
+    // Обновляем существующие ачивки
+    const updates = [
+        { name: 'Говорун', condition: 'messages:50' },
+        { name: 'Мастер диалога', condition: 'messages:150' },
+        { name: 'Легенда чатов', condition: 'messages:500' },
+        { name: 'Популярный автор', condition: 'likes:50' },
+        { name: 'Душа компании', condition: 'referrals:5' },
+        { name: 'Коллекционер', condition: 'collector' },
+        { name: 'Звезда канала', condition: 'channel_subscribers:20' }
+    ];
+    
+    for (const ach of updates) {
+        const result = db.prepare('UPDATE achievements SET condition = ? WHERE name = ?').run(ach.condition, ach.name);
+        if (result.changes > 0) {
+            console.log(`✅ Обновлена ачивка "${ach.name}" → ${ach.condition}`);
+        }
+    }
+    
+    // Добавляем новые ачивки, если их нет
+    const newAchievements = [
+        { name: 'На связи', description: 'Отправить 10 сообщений за день', icon: '📱', rarity: 'common', type: 'auto', condition: 'daily:10' },
+        { name: 'Сплетник', description: 'Написать 20 комментариев', icon: '💬', rarity: 'common', type: 'auto', condition: 'comments:20' },
+        { name: 'Лайкомания', description: 'Поставить 100 лайков', icon: '👍', rarity: 'rare', type: 'auto', condition: 'likes_given:100' },
+        { name: 'Ранний пташка', description: 'Написать сообщение до 9 утра', icon: '🌅', rarity: 'epic', type: 'auto', condition: 'morning_message' }
+    ];
+    
+    for (const ach of newAchievements) {
+        const exists = db.prepare('SELECT id FROM achievements WHERE name = ?').get(ach.name);
+        if (!exists) {
+            db.prepare(`
+                INSERT INTO achievements (name, description, icon, rarity, type, condition)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(ach.name, ach.description, ach.icon, ach.rarity, ach.type, ach.condition);
+            console.log(`✅ Добавлена новая ачивка "${ach.name}"`);
+        }
+    }
+    
+} catch(e) {
+    console.log('⚠️ Ошибка обновления ачивок:', e.message);
+}
+
+// ============= ОБНОВЛЕНИЕ ОПИСАНИЙ АЧИВОК =============
+try {
+    const updates = [
+        { name: 'Говорун', description: 'Отправить 50 сообщений' },
+        { name: 'Мастер диалога', description: 'Отправить 150 сообщений' },
+        { name: 'Легенда чатов', description: 'Отправить 500 сообщений' },
+        { name: 'Популярный автор', description: 'Получить 50 лайков на постах' },
+        { name: 'Звезда канала', description: 'Создать канал с 20+ подписчиками' },
+        { name: 'Душа компании', description: 'Пригласить 5 друзей' },
+        { name: 'Коллекционер', description: 'Получить 3 разных ачивки' },
+        { name: 'На связи', description: 'Отправить 10 сообщений за день' },
+        { name: 'Сплетник', description: 'Написать 20 комментариев' },
+        { name: 'Лайкомания', description: 'Поставить 100 лайков' },
+        { name: 'Ранний пташка', description: 'Написать сообщение до 9 утра' }
+    ];
+    
+    for (const ach of updates) {
+        const result = db.prepare('UPDATE achievements SET description = ? WHERE name = ?').run(ach.description, ach.name);
+        if (result.changes > 0) {
+            console.log(`✅ Обновлено описание ачивки "${ach.name}": ${ach.description}`);
+        }
+    }
+} catch(e) {
+    console.log('⚠️ Ошибка обновления описаний ачивок:', e.message);
+}
 
 // Экспортируем сам объект db (со всеми добавленными методами)
 module.exports = db;

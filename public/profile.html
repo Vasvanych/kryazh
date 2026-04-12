@@ -310,6 +310,158 @@
             color: var(--text);
             font-size: 14px;
         }
+        
+        /* ============= ДОСТИЖЕНИЯ ============= */
+.achievements-section {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: var(--shadow);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.achievements-count {
+    background: var(--primary);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+}
+
+.achievement-card {
+    background: var(--bg);
+    border-radius: 16px;
+    padding: 12px 8px;
+    text-align: center;
+    transition: all 0.2s;
+    position: relative;
+    cursor: pointer;
+}
+
+.achievement-card:hover {
+    transform: translateY(-2px);
+}
+
+.achievement-card.earned {
+    background: linear-gradient(135deg, var(--primary-light), var(--bg));
+    border: 1px solid var(--primary);
+}
+
+.achievement-card.locked {
+    opacity: 0.6;
+    filter: grayscale(0.3);
+}
+
+.achievement-icon {
+    font-size: 36px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.achievement-name {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.achievement-desc {
+    font-size: 10px;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.achievement-rarity {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 10px;
+}
+
+.rarity-common { color: #9e9e9e; }
+.rarity-rare { color: #2196f3; }
+.rarity-epic { color: #9c27b0; }
+.rarity-legendary { color: #ff9800; }
+
+/* Уведомление о новой ачивке */
+.achievement-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 14px 20px;
+    border-radius: 30px;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    animation: slideInRight 0.3s ease;
+    cursor: pointer;
+}
+
+.achievement-toast-icon {
+    font-size: 28px;
+}
+
+.achievement-toast-content {
+    flex: 1;
+}
+
+.achievement-toast-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.achievement-toast-desc {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .achievements-grid {
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 8px;
+    }
+    .achievement-icon {
+        font-size: 28px;
+    }
+    .achievement-name {
+        font-size: 10px;
+    }
+}
 
         /* Обложка */
         .banner-container {
@@ -631,6 +783,16 @@
         </div>
     </div>
 
+    <!-- Достижения -->
+<div class="achievements-section">
+    <div class="section-header">
+        <h3>🏆 Достижения</h3>
+        <span class="achievements-count" id="achievementsCount">0</span>
+    </div>
+    <div class="achievements-grid" id="achievementsGrid">
+        <div class="loading">⏳ Загрузка достижений...</div>
+    </div>
+</div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         // Применяем тему
@@ -714,6 +876,7 @@
                 if (res.ok) {
                     alert('Заявка отправлена!');
                     loadProfile();
+                    await loadAchievements();
                 } else {
                     alert(data.error || 'Ошибка');
                 }
@@ -984,6 +1147,82 @@ if (profile.website) {
         }
         
         init();
+
+
+        // ============= ДОСТИЖЕНИЯ =============
+
+async function loadAchievements() {
+    const container = document.getElementById('achievementsGrid');
+    const countSpan = document.getElementById('achievementsCount');
+    if (!container) return;
+    
+    try {
+        const res = await fetch('/api/user/achievements', { credentials: 'include' });
+        const data = await res.json();
+        
+        if (!data.all || data.all.length === 0) {
+            container.innerHTML = '<div class="empty" style="grid-column: 1/-1;">🏆 Достижений пока нет</div>';
+            if (countSpan) countSpan.textContent = '0';
+            return;
+        }
+        
+        const earnedCount = data.all.filter(a => a.earned === 1).length;
+        if (countSpan) countSpan.textContent = earnedCount;
+        
+        container.innerHTML = data.all.map(ach => `
+            <div class="achievement-card ${ach.earned ? 'earned' : 'locked'}" 
+                 title="${escapeHtml(ach.description)}">
+                <span class="achievement-rarity rarity-${ach.rarity}">
+                    ${ach.rarity === 'common' ? '●' : ach.rarity === 'rare' ? '◆' : ach.rarity === 'epic' ? '◇' : '★'}
+                </span>
+                <div class="achievement-icon">${ach.icon || '🏆'}</div>
+                <div class="achievement-name">${escapeHtml(ach.name)}</div>
+                <div class="achievement-desc">${escapeHtml(ach.description.substring(0, 30))}${ach.description.length > 30 ? '...' : ''}</div>
+            </div>
+        `).join('');
+        
+        // Если есть новые ачивки (не просмотренные) — показываем уведомление
+        const newAchievements = data.earned.filter(a => a.is_viewed === 0);
+        if (newAchievements.length > 0) {
+            showAchievementToast(newAchievements[0]);
+        }
+        
+    } catch (err) {
+        console.error('Ошибка загрузки достижений:', err);
+        if (container) container.innerHTML = '<div class="empty" style="grid-column: 1/-1;">❌ Ошибка загрузки</div>';
+    }
+}
+
+function showAchievementToast(achievement) {
+    const toast = document.createElement('div');
+    toast.className = 'achievement-toast';
+    toast.innerHTML = `
+        <div class="achievement-toast-icon">${achievement.icon || '🏆'}</div>
+        <div class="achievement-toast-content">
+            <div class="achievement-toast-title">🎉 Новое достижение!</div>
+            <div class="achievement-toast-desc">${escapeHtml(achievement.name)}</div>
+        </div>
+    `;
+    toast.onclick = () => {
+        toast.remove();
+        // Прокручиваем к достижениям
+        const achievementsSection = document.querySelector('.achievements-section');
+        if (achievementsSection) {
+            achievementsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        if (toast && toast.parentNode) toast.remove();
+    }, 8000);
+}
+
+// Загружаем ачивки после загрузки страницы
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('achievementsGrid')) {
+        loadAchievements();
+    }
+});
     </script>
 </body>
 </html>

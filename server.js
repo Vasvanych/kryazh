@@ -237,6 +237,185 @@ if (vapidPublicKey && vapidPrivateKey) {
 // Хранилище подписок (в продакшене нужно хранить в БД)
 const pushSubscriptions = new Map(); // userId -> subscription
 
+// ============= АВТОМАТИЧЕСКАЯ ВЫДАЧА АЧИВОК =============
+
+/**
+ * Проверить и выдать автоматические ачивки пользователю
+ * @param {number} userId - ID пользователя
+ * @returns {Promise<Array>} - Массив выданных ачивок
+ */
+async function checkAndAwardAchievements(userId) {
+    try {
+        // 1. Получаем статистику пользователя
+const stats = db.prepare(`
+    SELECT 
+        (SELECT COUNT(*) FROM messages WHERE user_id = ?) as messages_count,
+        (SELECT COUNT(*) FROM channel_posts WHERE author_id = ?) as posts_count,
+        (SELECT COUNT(*) FROM post_likes pl 
+         JOIN channel_posts p ON pl.post_id = p.id 
+         WHERE p.author_id = ?) as likes_received,
+        (SELECT COUNT(*) FROM post_likes WHERE user_id = ?) as likes_given,
+        (SELECT COUNT(*) FROM post_comments WHERE user_id = ?) as comments_count,
+        (SELECT COUNT(*) FROM referrals WHERE referrer_id = ?) as referrals_count,
+        (SELECT COUNT(*) FROM user_achievements WHERE user_id = ?) as achievements_count
+`).get(userId, userId, userId, userId, userId, userId, userId);
+        
+        console.log(`📊 Статистика пользователя ${userId}:`, stats);
+        
+        // 2. Получаем все автоматические ачивки, которые ещё не выданы пользователю
+        const availableAchievements = db.prepare(`
+            SELECT a.* FROM achievements a
+            WHERE a.type = 'auto'
+            AND a.condition != ''
+            AND NOT EXISTS (
+                SELECT 1 FROM user_achievements ua 
+                WHERE ua.achievement_id = a.id AND ua.user_id = ?
+            )
+        `).all(userId);
+        
+        console.log(`🎯 Доступных ачивок для проверки: ${availableAchievements.length}`);
+        
+        let awarded = [];
+        
+        // 3. Проверяем каждую ачивку
+        for (const ach of availableAchievements) {
+            let conditionMet = false;
+            const condition = ach.condition;
+            
+            console.log(`   Проверяем "${ach.name}" (${condition})...`);
+            
+            // Регистрация (особый случай)
+            if (condition === 'registration') {
+                conditionMet = true;
+            }
+            // Количество сообщений: messages:100, messages:1000 и т.д.
+            else if (condition.startsWith('messages:')) {
+                const required = parseInt(condition.split(':')[1]);
+                if (stats.messages_count >= required) {
+                    conditionMet = true;
+                    console.log(`      ✅ Сообщений: ${stats.messages_count} >= ${required}`);
+                }
+            }
+            // Первый пост
+            else if (condition === 'first_post') {
+                if (stats.posts_count >= 1) {
+                    conditionMet = true;
+                    console.log(`      ✅ Постов: ${stats.posts_count} >= 1`);
+                }
+            }
+            // Количество лайков: likes:100
+            else if (condition.startsWith('likes:')) {
+                const required = parseInt(condition.split(':')[1]);
+                if (stats.likes_received >= required) {
+                    conditionMet = true;
+                    console.log(`      ✅ Лайков: ${stats.likes_received} >= ${required}`);
+                }
+            }
+
+            // Коллекционер (5 ачивок)
+            else if (condition === 'collector') {
+                if (stats.achievements_count >= 5) {
+                    conditionMet = true;
+                    console.log(`      ✅ Ачивок: ${stats.achievements_count} >= 5`);
+                }
+            }
+
+            // Ежедневные сообщения (daily:10)
+else if (condition.startsWith('daily:')) {
+    const required = parseInt(condition.split(':')[1]);
+    const today = new Date().toISOString().split('T')[0];
+    const dailyCount = db.prepare(`
+        SELECT COUNT(*) as count FROM messages 
+        WHERE user_id = ? AND date(created_at) = ?
+    `).get(userId, today).count;
+    if (dailyCount >= required) {
+        conditionMet = true;
+        console.log(`      ✅ Сообщений сегодня: ${dailyCount} >= ${required}`);
+    }
+}
+// Количество комментариев (comments:20)
+else if (condition.startsWith('comments:')) {
+    const required = parseInt(condition.split(':')[1]);
+    if (stats.comments_count >= required) {
+        conditionMet = true;
+        console.log(`      ✅ Комментариев: ${stats.comments_count} >= ${required}`);
+    }
+}
+// Поставленные лайки (likes_given:100)
+else if (condition.startsWith('likes_given:')) {
+    const required = parseInt(condition.split(':')[1]);
+    if (stats.likes_given >= required) {
+        conditionMet = true;
+        console.log(`      ✅ Поставлено лайков: ${stats.likes_given} >= ${required}`);
+    }
+}
+// Утреннее сообщение (morning_message)
+else if (condition === 'morning_message') {
+    const hour = new Date().getHours();
+    if (hour < 9) {
+        conditionMet = true;
+        console.log(`      ✅ Утреннее сообщение в ${hour}:00`);
+    }
+}
+
+            // Количество подписчиков канала: channel_subscribers:50
+            else if (condition.startsWith('channel_subscribers:')) {
+                const required = parseInt(condition.split(':')[1]);
+                const maxSubscribers = db.prepare(`
+                    SELECT MAX(members_count) as max FROM (
+                        SELECT COUNT(*) as members_count 
+                        FROM chat_participants cp
+                        JOIN chats c ON cp.chat_id = c.id
+                        WHERE c.creator_id = ? AND c.type = 'channel'
+                        GROUP BY c.id
+                    )
+                `).get(userId);
+                if (maxSubscribers && maxSubscribers.max >= required) {
+                    conditionMet = true;
+                    console.log(`      ✅ Подписчиков: ${maxSubscribers.max} >= ${required}`);
+                }
+            }
+            
+            // 4. Если условие выполнено — выдаём ачивку
+            if (conditionMet) {
+                try {
+                    db.prepare(`
+                        INSERT INTO user_achievements (user_id, achievement_id, awarded_by)
+                        VALUES (?, ?, NULL)
+                    `).run(userId, ach.id);
+                    
+                    awarded.push(ach);
+                    console.log(`      🏆 Выдана ачивка: ${ach.name}`);
+                    
+                    // 5. Отправляем уведомление пользователю через WebSocket
+                    const socketId = userSessions.get(userId);
+                    if (socketId) {
+                        io.to(socketId).emit('new_achievement', {
+                            id: ach.id,
+                            name: ach.name,
+                            icon: ach.icon,
+                            description: ach.description,
+                            type: 'auto',
+                            rarity: ach.rarity
+                        });
+                        console.log(`      📨 Уведомление отправлено пользователю ${userId}`);
+                    }
+                } catch (err) {
+                    console.error(`      ❌ Ошибка выдачи ачивки ${ach.name}:`, err.message);
+                }
+            }
+        }
+        
+
+
+        return awarded;
+        
+    } catch (error) {
+        console.error('❌ Ошибка в checkAndAwardAchievements:', error);
+        return [];
+    }
+}
+
 // Middleware: проверка fingerprint сессии (защита от перехвата)
 app.use((req, res, next) => {
     if (req.session.userId) {
@@ -430,6 +609,20 @@ app.post('/api/register', async (req, res) => {
         const hash = await bcrypt.hash(password, 10);
         const stmt = db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'user')");
         const result = stmt.run(username, hash);
+        const newUserId = result.lastInsertRowid;
+
+
+
+// ============= ПРОВЕРКА АЧИВОК =============
+try {
+    const awarded = await checkAndAwardAchievements(newUserId);
+    if (awarded.length > 0) {
+        console.log(`🏆 Новый пользователь ${newUserId} получил ачивки:`, awarded.map(a => a.name));
+    }
+} catch (err) {
+    console.error('Ошибка при проверке ачивок при регистрации:', err);
+}
+// ============= КОНЕЦ =============  
         
         const fingerprint = crypto
             .createHash('sha256')
@@ -1118,7 +1311,7 @@ app.delete('/api/admin/messages/:messageId', requireAdmin, (req, res) => {
  * Создать пост в канале
  * POST /api/channels/:id/posts
  */
-app.post('/api/channels/:id/posts', requireAuth, (req, res) => {
+app.post('/api/channels/:id/posts', requireAuth, async (req, res) => {
     const channelId = parseInt(req.params.id);
     const { content, mediaUrl } = req.body;
     const userId = req.session.userId;
@@ -1166,7 +1359,18 @@ app.post('/api/channels/:id/posts', requireAuth, (req, res) => {
             WHERE p.id = ?
         `).get(info.lastInsertRowid);
         
-        
+
+// ============= ПРОВЕРКА АЧИВОК =============
+try {
+    const awarded = await checkAndAwardAchievements(userId);
+    if (awarded.length > 0) {
+        console.log(`🏆 Пользователь ${userId} получил ачивки за создание поста:`, awarded.map(a => a.name));
+    }
+} catch (err) {
+    console.error('Ошибка при проверке ачивок:', err);
+}
+// ============= КОНЕЦ =============
+
         console.log(`✅ Пост создан! ID: ${post.id}, канал: ${post.channel_name}`);
         
         // ============= ЛОГИ ДЛЯ ОТЛАДКИ =============
@@ -1602,6 +1806,11 @@ io.on('connection', (socket) => {
                 parentId || null
             );
             const msgId = result.lastInsertRowid;
+
+// Проверяем и выдаём ачивки (только для обычных сообщений, не для комментариев)
+if (!parentId) {
+    await checkAndAwardAchievements(userId);
+}
 
             // Отправляем push-уведомления всем участникам чата (кроме отправителя)
 if (!parentId) { // Не отправляем для комментариев
@@ -2391,7 +2600,7 @@ app.get('/api/friends/feed', requireAuth, (req, res) => {
  * ПОСТАВИТЬ/УБРАТЬ ЛАЙК
  * POST /api/posts/:id/like
  */
-app.post('/api/posts/:id/like', requireAuth, (req, res) => {
+app.post('/api/posts/:id/like', requireAuth, async (req, res) => {
     const postId = parseInt(req.params.id);
     const userId = req.session.userId;
     
@@ -2411,31 +2620,37 @@ app.post('/api/posts/:id/like', requireAuth, (req, res) => {
         
         if (existingLike) {
             // === УБИРАЕМ ЛАЙК ===
-            // Удаляем запись о лайке
             db.prepare('DELETE FROM post_likes WHERE post_id = ? AND user_id = ?').run(postId, userId);
             
-            // Уменьшаем репутацию автора поста (на 1)
             const repExists = db.prepare('SELECT * FROM user_reputation WHERE user_id = ?').get(post.author_id);
             if (repExists && repExists.points > 0) {
                 db.prepare('UPDATE user_reputation SET points = points - 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(post.author_id);
             }
             
-            // Удаляем из истории репутации
             db.prepare('DELETE FROM reputation_history WHERE from_user_id = ? AND to_user_id = ? AND post_id = ?').run(userId, post.author_id, postId);
             
             action = 'removed';
         } else {
             // === СТАВИМ ЛАЙК ===
-            // Добавляем запись о лайке
             db.prepare('INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)').run(postId, userId);
             
-            // Увеличиваем репутацию автора поста (на 1)
             const repExists = db.prepare('SELECT * FROM user_reputation WHERE user_id = ?').get(post.author_id);
             if (repExists) {
                 db.prepare('UPDATE user_reputation SET points = points + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(post.author_id);
             } else {
                 db.prepare('INSERT INTO user_reputation (user_id, points) VALUES (?, 1)').run(post.author_id);
             }
+            
+            // ============= ПРОВЕРКА АЧИВОК (для автора поста) =============
+            try {
+                const awarded = await checkAndAwardAchievements(post.author_id);
+                if (awarded.length > 0) {
+                    console.log(`🏆 Пользователь ${post.author_id} получил ачивки за лайк:`, awarded.map(a => a.name));
+                }
+            } catch (err) {
+                console.error('Ошибка при проверке ачивок:', err);
+            }
+            // ============= КОНЕЦ =============
             
             // Добавляем в историю репутации
             db.prepare(`
@@ -2573,65 +2788,7 @@ app.get('/api/admin/reputation', requireAdmin, (req, res) => {
     res.json(users);
 });
 
-app.post('/api/posts/:id/comments', requireAuth, (req, res) => {
-    const postId = parseInt(req.params.id);
-    const userId = req.session.userId;
-    const { content } = req.body;
-    
-    console.log('========================================');
-    console.log('📝 POST /api/posts/:id/comments');
-    console.log('   postId:', postId);
-    console.log('   userId:', userId);
-    console.log('   content:', content);
-    console.log('   req.session:', req.session);
-    console.log('========================================');
-    
-    if (!content || content.trim() === '') {
-        console.log('❌ Пустой комментарий');
-        return res.status(400).json({ error: 'Комментарий не может быть пустым' });
-    }
-    
-    if (content.length > 1000) {
-        console.log('❌ Слишком длинный');
-        return res.status(400).json({ error: 'Комментарий слишком длинный (макс. 1000 символов)' });
-    }
-    
-    try {
-        // Проверяем, существует ли пост
-        const post = db.prepare('SELECT id, author_id FROM channel_posts WHERE id = ?').get(postId);
-        console.log('   Пост найден:', post);
-        
-        if (!post) {
-            console.log('❌ Пост не найден');
-            return res.status(404).json({ error: 'Пост не найден' });
-        }
-        
-        // Создаём комментарий
-        const stmt = db.prepare(`
-            INSERT INTO post_comments (post_id, user_id, content)
-            VALUES (?, ?, ?)
-        `);
-        const info = stmt.run(postId, userId, content.trim());
-        console.log('   Комментарий создан, ID:', info.lastInsertRowid);
-        
-        // Получаем созданный комментарий
-        const newComment = db.prepare(`
-            SELECT pc.*, u.username, u.avatar
-            FROM post_comments pc
-            JOIN users u ON pc.user_id = u.id
-            WHERE pc.id = ?
-        `).get(info.lastInsertRowid);
-        
-        console.log('   Отправляем ответ:', newComment);
-        res.status(201).json(newComment);
-        
-    } catch (error) {
-        console.error('❌ ОШИБКА:', error);
-        console.error('   error.message:', error.message);
-        console.error('   error.stack:', error.stack);
-        res.status(500).json({ error: error.message });
-    }
-});
+
 
 // ============= РАСШИРЕННЫЕ АДМИН-ФУНКЦИИ =============
 
@@ -2877,5 +3034,212 @@ app.post('/api/users/banner', requireAuth, uploadAvatar.single('banner'), (req, 
     db.prepare('UPDATE users SET banner = ? WHERE id = ?').run(bannerUrl, req.session.userId);
     res.json({ bannerUrl });
 });
+
+// ============= ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ КЛИЕНТОВ =============
+
+/**
+ * Отправить сигнал на перезагрузку всем подключённым пользователям
+ * POST /api/admin/force-reload
+ */
+app.post('/api/admin/force-reload', requireAdmin, (req, res) => {
+    const { version, message } = req.body;
+    const clients = io.sockets.sockets;
+    let count = 0;
+    
+    console.log(`🔄 Принудительное обновление: отправляем сигнал ${clients.size} клиентам`);
+    
+    clients.forEach(client => {
+        client.emit('force_reload', {
+            version: version || Date.now(),
+            message: message || 'Доступна новая версия. Страница будет перезагружена.'
+        });
+        count++;
+    });
+    
+    res.json({ 
+        success: true, 
+        reloaded: count,
+        message: `Сигнал отправлен ${count} пользователям`
+    });
+});
+
+/**
+ * Получить количество активных подключений
+ * GET /api/admin/online-count
+ */
+app.get('/api/admin/online-count', requireAdmin, (req, res) => {
+    const count = io.sockets.sockets.size;
+    res.json({ online: count });
+});
+
+// ============= АЧИВКИ (ДОСТИЖЕНИЯ) =============
+
+/**
+ * ПОЛУЧИТЬ ДОСТИЖЕНИЯ ПОЛЬЗОВАТЕЛЯ
+ * GET /api/user/achievements
+ */
+app.get('/api/user/achievements', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    
+    try {
+        // Полученные ачивки
+        const earned = db.prepare(`
+            SELECT a.*, ua.awarded_at, ua.is_viewed, u.username as awarded_by_name
+            FROM user_achievements ua
+            JOIN achievements a ON ua.achievement_id = a.id
+            LEFT JOIN users u ON ua.awarded_by = u.id
+            WHERE ua.user_id = ?
+            ORDER BY ua.awarded_at DESC
+        `).all(userId);
+        
+        // Все доступные ачивки (с пометкой, получена или нет)
+        const all = db.prepare(`
+            SELECT a.*, 
+                   CASE WHEN ua.id IS NOT NULL THEN 1 ELSE 0 END as earned
+            FROM achievements a
+            LEFT JOIN user_achievements ua ON a.id = ua.achievement_id AND ua.user_id = ?
+            ORDER BY a.id
+        `).all(userId);
+        
+        // Отмечаем как просмотренные (чтобы не показывать уведомление снова)
+        db.prepare('UPDATE user_achievements SET is_viewed = 1 WHERE user_id = ? AND is_viewed = 0').run(userId);
+        
+        res.json({ earned, all });
+        
+    } catch (error) {
+        console.error('Ошибка получения достижений:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ВЫДАТЬ АЧИВКУ ПОЛЬЗОВАТЕЛЮ (админ)
+ * POST /api/admin/achievements/grant
+ */
+app.post('/api/admin/achievements/grant', requireAdmin, (req, res) => {
+    const { userId, achievementId, reason } = req.body;
+    const adminId = req.session.userId;
+    
+    if (!userId || !achievementId) {
+        return res.status(400).json({ error: 'Не указан пользователь или достижение' });
+    }
+    
+    try {
+        // Проверяем, существует ли пользователь
+        const user = db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        
+        // Проверяем, существует ли ачивка
+        const achievement = db.prepare('SELECT * FROM achievements WHERE id = ?').get(achievementId);
+        if (!achievement) {
+            return res.status(404).json({ error: 'Достижение не найдено' });
+        }
+        
+        // Проверяем, нет ли уже такой ачивки
+        const existing = db.prepare('SELECT id FROM user_achievements WHERE user_id = ? AND achievement_id = ?')
+            .get(userId, achievementId);
+        if (existing) {
+            return res.status(400).json({ error: 'У пользователя уже есть это достижение' });
+        }
+        
+        // Выдаём ачивку
+        db.prepare(`
+            INSERT INTO user_achievements (user_id, achievement_id, awarded_by)
+            VALUES (?, ?, ?)
+        `).run(userId, achievementId, adminId);
+        
+        // Отправляем уведомление пользователю через WebSocket
+        const socketId = userSessions.get(userId);
+        if (socketId) {
+            io.to(socketId).emit('new_achievement', {
+                id: achievement.id,
+                name: achievement.name,
+                icon: achievement.icon,
+                description: achievement.description,
+                reason: reason || null
+            });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: `Достижение "${achievement.name}" выдано пользователю ${user.username}` 
+        });
+        
+    } catch (error) {
+        console.error('Ошибка выдачи ачивки:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ПОЛУЧИТЬ СПИСОК ВСЕХ ДОСТИЖЕНИЙ (админ)
+ * GET /api/admin/achievements/list
+ */
+app.get('/api/admin/achievements/list', requireAdmin, (req, res) => {
+    try {
+        const achievements = db.prepare('SELECT * FROM achievements ORDER BY id').all();
+        res.json(achievements);
+    } catch (error) {
+        console.error('Ошибка получения списка ачивок:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * ПОЛУЧИТЬ ВЫДАННЫЕ АЧИВКИ ПОЛЬЗОВАТЕЛЯ (админ)
+ * GET /api/admin/users/:userId/achievements
+ */
+app.get('/api/admin/users/:userId/achievements', requireAdmin, (req, res) => {
+    const userId = parseInt(req.params.userId);
+    
+    try {
+        const achievements = db.prepare(`
+            SELECT a.*, ua.awarded_at, u.username as awarded_by_name
+            FROM user_achievements ua
+            JOIN achievements a ON ua.achievement_id = a.id
+            LEFT JOIN users u ON ua.awarded_by = u.id
+            WHERE ua.user_id = ?
+            ORDER BY ua.awarded_at DESC
+        `).all(userId);
+        
+        res.json(achievements);
+    } catch (error) {
+        console.error('Ошибка получения ачивок пользователя:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+/**
+ * СОЗДАТЬ НОВОЕ ДОСТИЖЕНИЕ (админ)
+ * POST /api/admin/achievements/create
+ */
+app.post('/api/admin/achievements/create', requireAdmin, (req, res) => {
+    const { name, description, icon, rarity } = req.body;
+    
+    if (!name || !description) {
+        return res.status(400).json({ error: 'Название и описание обязательны' });
+    }
+    
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO achievements (name, description, icon, rarity)
+            VALUES (?, ?, ?, ?)
+        `);
+        const info = stmt.run(name, description, icon || '🏆', rarity || 'common');
+        
+        res.json({ 
+            success: true, 
+            id: info.lastInsertRowid,
+            message: `Достижение "${name}" создано`
+        });
+    } catch (error) {
+        console.error('Ошибка создания ачивки:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+
 
 server.listen(port, () => console.log(`🚀 Kryazh Messenger запущен на http://localhost:${port}`));

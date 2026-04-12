@@ -145,6 +145,12 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             transition: transform 0.2s;
         }
+        
+        .hint {
+           font-size: 11px;
+           color: var(--text-muted);
+           margin-top: 5px;
+        }
 
         .stat-card:hover {
             transform: translateY(-2px);
@@ -326,6 +332,51 @@
         .modal-content h3 {
             margin-bottom: 16px;
         }
+        
+        /* Админка ачивок */
+.achievements-admin-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.user-achievements-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+}
+
+.user-achievements-card .user-header {
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.achievements-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.grant-ach-btn {
+    margin: 0 !important;
+}
+
+/* Модальное окно создания ачивки */
+.modal-content input, .modal-content textarea, .modal-content select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+}
 
         .post-preview {
             max-width: 250px;
@@ -388,6 +439,9 @@
                 </a>
                 <a href="#" data-section="settings">
                     <span>⚙️</span> <span>Настройки</span>
+                </a>
+                <a href="#" data-section="achievements">
+                <span>🏆</span> <span>Ачивки</span>
                 </a>
             </nav>
         </div>
@@ -551,6 +605,20 @@
                 </div>
             </div>
             
+            <!-- Ачивки -->
+<div id="achievements" class="section">
+    <div class="achievements-admin-header">
+        <div class="search-box" style="flex: 1;">
+            <input type="text" id="achievementSearch" class="search-input" placeholder="🔍 Поиск пользователя...">
+        </div>
+        <button id="createAchievementBtn" class="btn btn-primary">➕ Создать ачивку</button>
+    </div>
+    
+    <div id="achievementsList" class="achievements-admin-list">
+        <div class="loading">⏳ Загрузка...</div>
+    </div>
+</div>
+
             <!-- Настройки -->
             <div id="settings" class="section">
                 <div class="table-container">
@@ -582,6 +650,24 @@
                         </div>
                         <button class="btn btn-primary" id="refreshBtn">🔄 Обновить всё</button>
                     </div>
+                <!-- НОВЫЙ БЛОК: Управление клиентами -->
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);">
+    <h3 style="margin-bottom: 16px;">🔄 Управление клиентами</h3>
+    
+    <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div style="background: var(--bg); padding: 8px 16px; border-radius: 12px;">
+            👥 Онлайн: <strong id="onlineCountValue">-</strong> пользователей
+        </div>
+        <button id="forceReloadBtn" class="btn" style="background: #ff9800; color: white;">
+            🔄 Обновить всех клиентов
+        </button>
+    </div>
+    
+    <div id="reloadStatus" style="font-size: 12px; color: var(--text-secondary); display: none;"></div>
+    <div class="hint" style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+        ⚡ Отправит сигнал всем активным пользователям. Их страницы автоматически перезагрузятся через 5 секунд.
+    </div>
+</div>
                 </div>
             </div>
         </div>
@@ -978,6 +1064,7 @@
             if (activeSection === 'posts') loadPosts();
             if (activeSection === 'messages') loadMessages();
             if (activeSection === 'reputation') loadReputation();
+            if (activeSection === 'achievements') loadAchievementsAdmin();
         }
         
         // Навигация
@@ -999,6 +1086,7 @@
                     posts: '📰 Посты',
                     messages: '📝 Сообщения',
                     reputation: '⭐ Репутация',
+                    achievements: '🏆 Ачивки',
                     settings: '⚙️ Настройки'
                 };
                 document.getElementById('pageTitle').textContent = titles[section];
@@ -1056,6 +1144,219 @@
             socket.on('new_post', () => { if (document.getElementById('posts').classList.contains('active')) loadPosts(); });
             socket.on('new_message', () => { if (document.getElementById('messages').classList.contains('active')) loadMessages(); });
         });
+
+        // ============= УПРАВЛЕНИЕ КЛИЕНТАМИ =============
+
+// Обновление счётчика онлайн
+async function updateOnlineCount() {
+    try {
+        const res = await fetch('/api/admin/online-count', { credentials: 'include' });
+        const data = await res.json();
+        const onlineSpan = document.getElementById('onlineCountValue');
+        if (onlineSpan) {
+            onlineSpan.textContent = data.online || 0;
+        }
+    } catch (err) {
+        console.error('Ошибка получения онлайн:', err);
+    }
+}
+
+// Кнопка принудительного обновления
+const forceReloadBtn = document.getElementById('forceReloadBtn');
+const reloadStatus = document.getElementById('reloadStatus');
+
+if (forceReloadBtn) {
+    forceReloadBtn.onclick = async () => {
+        if (!confirm('Отправить сигнал на перезагрузку всем активным пользователям?')) return;
+        
+        const originalText = forceReloadBtn.textContent;
+        forceReloadBtn.textContent = '⏳ Отправка...';
+        forceReloadBtn.disabled = true;
+        
+        if (reloadStatus) {
+            reloadStatus.style.display = 'block';
+            reloadStatus.textContent = '⏳ Отправка сигнала...';
+        }
+        
+        try {
+            const res = await fetch('/api/admin/force-reload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                    message: '🔧 Проводятся технические работы. Страница будет перезагружена.' 
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                if (reloadStatus) {
+                    reloadStatus.style.color = '#4caf50';
+                    reloadStatus.textContent = `✅ ${data.message}`;
+                }
+                setTimeout(() => {
+                    if (reloadStatus) reloadStatus.style.display = 'none';
+                }, 3000);
+            } else {
+                throw new Error(data.error || 'Ошибка');
+            }
+        } catch (err) {
+            console.error(err);
+            if (reloadStatus) {
+                reloadStatus.style.color = '#f44336';
+                reloadStatus.textContent = '❌ Ошибка отправки';
+                setTimeout(() => {
+                    if (reloadStatus) reloadStatus.style.display = 'none';
+                }, 3000);
+            }
+        } finally {
+            forceReloadBtn.textContent = originalText;
+            forceReloadBtn.disabled = false;
+        }
+    };
+}
+
+// Обновляем счётчик онлайн каждые 10 секунд
+updateOnlineCount();
+setInterval(updateOnlineCount, 10000);
+
+// ============= АЧИВКИ (АДМИНКА) =============
+
+let allAchievements = [];
+
+// Загрузка списка пользователей и ачивок для админки
+async function loadAchievementsAdmin() {
+    const container = document.getElementById('achievementsList');
+    const search = document.getElementById('achievementSearch')?.value.toLowerCase() || '';
+    
+    if (!container) return;
+    
+    try {
+        // Получаем список пользователей
+        const usersRes = await fetch('/api/admin/users');
+        let users = await usersRes.json();
+        if (search) {
+            users = users.filter(u => u.username.toLowerCase().includes(search));
+        }
+        
+        // Получаем список ачивок
+        const achRes = await fetch('/api/admin/achievements/list');
+        allAchievements = await achRes.json();
+        
+        if (users.length === 0) {
+            container.innerHTML = '<div class="empty">👥 Нет пользователей</div>';
+            return;
+        }
+        
+        // Для каждого пользователя получаем его ачивки
+        let html = '';
+        for (const user of users) {
+            const userAchRes = await fetch(`/api/admin/users/${user.id}/achievements`);
+            const userAchievements = await userAchRes.json();
+            const userAchIds = new Set(userAchievements.map(a => a.id));
+            
+            html += `
+                <div class="user-achievements-card" data-user-id="${user.id}">
+                    <div class="user-header">
+                        <strong>${escapeHtml(user.username)}</strong> (ID: ${user.id})
+                        <span style="float: right; font-size: 12px;">🏆 ${userAchievements.length}/${allAchievements.length}</span>
+                    </div>
+                    <div class="achievements-buttons" id="ach-btns-${user.id}">
+                        ${allAchievements.map(ach => `
+                            <button class="btn btn-sm grant-ach-btn ${userAchIds.has(ach.id) ? 'btn-success' : 'btn-primary'}" 
+                                    data-user="${user.id}" 
+                                    data-ach="${ach.id}"
+                                    data-name="${escapeHtml(ach.name)}"
+                                    data-granted="${userAchIds.has(ach.id)}"
+                                    ${userAchIds.has(ach.id) ? 'disabled' : ''}>
+                                ${ach.icon || '🏆'} ${escapeHtml(ach.name)}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+        
+        // Обработчики для кнопок выдачи
+        document.querySelectorAll('.grant-ach-btn').forEach(btn => {
+            if (btn.disabled) return;
+            btn.onclick = async () => {
+                const userId = btn.dataset.user;
+                const achievementId = btn.dataset.ach;
+                const achievementName = btn.dataset.name;
+                
+                if (!confirm(`Выдать достижение "${achievementName}" пользователю?`)) return;
+                
+                const originalText = btn.textContent;
+                btn.textContent = '⏳';
+                btn.disabled = true;
+                
+                try {
+                    const res = await fetch('/api/admin/achievements/grant', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ userId, achievementId })
+                    });
+                    
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(`✅ ${data.message}`);
+                        // Обновляем секцию
+                        loadAchievementsAdmin();
+                    } else {
+                        alert(`❌ ${data.error || 'Ошибка'}`);
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                } catch (err) {
+                    alert('❌ Ошибка соединения');
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            };
+        });
+        
+    } catch (err) {
+        console.error('Ошибка загрузки:', err);
+        container.innerHTML = '<div class="empty">❌ Ошибка загрузки</div>';
+    }
+}
+
+// Создание новой ачивки
+const createAchievementBtn = document.getElementById('createAchievementBtn');
+if (createAchievementBtn) {
+    createAchievementBtn.onclick = () => {
+        const name = prompt('Введите название достижения:');
+        if (!name) return;
+        const description = prompt('Введите описание:');
+        if (!description) return;
+        const icon = prompt('Введите иконку (эмодзи):', '🏆');
+        const rarity = prompt('Редкость (common, rare, epic, legendary):', 'common');
+        
+        fetch('/api/admin/achievements/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, description, icon, rarity })
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+                loadAchievementsAdmin();
+            } else {
+                alert(`❌ ${data.error}`);
+            }
+        }).catch(() => alert('❌ Ошибка'));
+    };
+}
+
+// Поиск
+const achievementSearch = document.getElementById('achievementSearch');
+if (achievementSearch) {
+    achievementSearch.oninput = () => loadAchievementsAdmin();
+}
     </script>
 </body>
 </html>
