@@ -247,7 +247,7 @@ const pushSubscriptions = new Map(); // userId -> subscription
 async function checkAndAwardAchievements(userId) {
     try {
         // 1. Получаем статистику пользователя
-const stats = db.prepare(`
+        const stats = db.prepare(`
     SELECT 
         (SELECT COUNT(*) FROM messages WHERE user_id = ?) as messages_count,
         (SELECT COUNT(*) FROM channel_posts WHERE author_id = ?) as posts_count,
@@ -256,9 +256,8 @@ const stats = db.prepare(`
          WHERE p.author_id = ?) as likes_received,
         (SELECT COUNT(*) FROM post_likes WHERE user_id = ?) as likes_given,
         (SELECT COUNT(*) FROM post_comments WHERE user_id = ?) as comments_count,
-        (SELECT COUNT(*) FROM referrals WHERE referrer_id = ?) as referrals_count,
         (SELECT COUNT(*) FROM user_achievements WHERE user_id = ?) as achievements_count
-`).get(userId, userId, userId, userId, userId, userId, userId);
+`).get(userId, userId, userId, userId, userId, userId);
         
         console.log(`📊 Статистика пользователя ${userId}:`, stats);
         
